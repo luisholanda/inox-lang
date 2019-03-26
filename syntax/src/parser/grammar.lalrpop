@@ -1,0 +1,76 @@
+use bumpalo::Bump;
+use bumpalo::collections::Vec as BVec;
+
+use symbol::{Ident, IdentPart, Symbol}
+
+use crate::cst::{Expr, Term, Literal, IfExpr, MatchExpr, MatchCase, MatchBranch, ArithOp, LogicOp, Logic, Oper, Stmt, Let}
+
+grammar<'arena>(arena: &'arena Bump);
+
+or<e1, e2> = { e1, e2 };
+
+comma<e>: BVec<e> = {
+    <es:comma<e>> "," <e:e> => {
+        es.push(e);
+
+        e
+    },
+    e => {
+        let mut es = BVec::new_in(arena);
+        es.push(e);
+
+        es
+    }
+}
+
+arith<op, next>: Expr<'arena, Ident> = {
+    <lhs: arith<op, next>> <op:op> <n:next> => {
+        let rhs = arena.alloc(n);
+
+        Expr::Arith(Oper{lhs, op, rhs})
+    }
+    next
+};
+
+logic<op, next>: Expr<'arena, Ident> = {
+    <lhs: logic<op, next>> <op: op> <n: next> => {
+        let rhs = arena.alloc(n);
+
+        Expr::Logic(Logic::Oper(Oper{lhs, op, rhs}))
+    }
+    next
+};
+
+expr: Expr<'arena, Ident> = {
+    not
+}
+
+not: Expr<'arena, Ident> = {
+    <n:"not"> <l:or> => Expr::Logic(Logic::Not(arena.alloc(l))),
+    or
+};
+
+or  = logic<"or", and>;
+and = logic<"and", plus>;
+
+plus  = arith<"plus", arith<"or", mult>>;
+mult  = arith<or<"mult", "div">, shift>;
+shift = arith<or<"lshift", "rshift">, pow>;
+pow   = arith<or<"pow", "mod">, factor>;
+
+factor: Expr<'arena, Ident> = {
+    term => Expr::Term(<>),
+    <f:factor> "(" <args:comma<expr>> ")" => {
+        let func = arena.alloc(f);
+
+        Expr::Call{func, args}
+    }
+    "(" <expr> ")" => Expr::Parens(arena.alloc(<>))
+};
+
+term: Term<'arena, Ident> = {
+    ident => Term::Var(<>),
+    literal => Term::Lit(<>),
+    <factor> "." <ident> => Term::Field(<>),
+    <factor> "[" <expr> "]" => Term::Index(<>),
+};

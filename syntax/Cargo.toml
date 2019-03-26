@@ -1,0 +1,16 @@
+[package]
+name = "syntax"
+version = "0.1.0"
+authors = ["Luis Holanda <luiscmholanda@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+bumpalo = "2.2"
+codespan = "0.2"
+codespan-reporting = "0.2"
+failure = "0.1"
+plex =  "0.2"
+unicode-xid = "0.1"
+id-arena = "2.2"
+
+symbol = { path = "../symbol" }
