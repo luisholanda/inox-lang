@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "base",
+  "inoxc",
   "syntax",
-  "symbol"
+  "symbol",
 ]

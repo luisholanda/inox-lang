@@ -1,0 +1,9 @@
+[package]
+name = "inoxc"
+version = "0.1.0"
+authors = ["Luis Holanda <luiscmholanda@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+syntax = { path = "../syntax" }
+bumpalo = "2.2"

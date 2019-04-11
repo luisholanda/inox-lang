@@ -1,0 +1,21 @@
+concat: forall a' with Monoid[a'] . vec[a'] -> a'
+concat(as) = {
+  let result = default();
+
+  for a in as {
+    print(a);
+    result = result + sum(a);
+  }
+
+  result
+}
+
+
+main: -> ()
+main = {
+  let test = [1, 2, 3];
+
+  let result = concat(test);
+
+  assert_eq(result, 6);
+}
