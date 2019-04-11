@@ -2,69 +2,8 @@ use std::fmt;
 
 use symbol::pos::{Location, Spanned};
 
+pub use crate::cst::{ArithOp, LogicOp};
 use crate::lexer::error::PlexLexerError;
-
-/// A binary arithmetic operator token.
-#[derive(Debug, Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub enum ArithOp {
-    Add,
-    Sub,
-    Mult,
-    Div,
-    LShift,
-    RShift,
-    Mod,
-    Pow,
-}
-
-impl fmt::Display for ArithOp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self {
-            ArithOp::Add => "+",
-            ArithOp::Sub => "-",
-            ArithOp::Mult => "*",
-            ArithOp::Div => "/",
-            ArithOp::Pow => "**",
-            ArithOp::Mod => "%",
-            ArithOp::LShift => "<<",
-            ArithOp::RShift => ">>",
-        };
-
-        write!(f, "{}", s)
-    }
-}
-
-/// A logic operator token.
-#[derive(Debug, Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub enum LogicOp {
-    DoubleEquals,
-    NotEquals,
-    LessThan,
-    LessEquals,
-    GreaterThan,
-    GreaterEquals,
-    Not,
-    And,
-    Or,
-}
-
-impl fmt::Display for LogicOp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self {
-            LogicOp::DoubleEquals => "==",
-            LogicOp::NotEquals => "!=",
-            LogicOp::LessThan => "<",
-            LogicOp::LessEquals => "<=",
-            LogicOp::GreaterEquals => ">=",
-            LogicOp::GreaterThan => ">",
-            LogicOp::Not => "not",
-            LogicOp::And => "and",
-            LogicOp::Or => "or",
-        };
-
-        write!(f, "{}", s)
-    }
-}
 
 /// A delimiter token.
 #[derive(Debug, Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
@@ -98,12 +37,12 @@ impl Delimiter {
         use self::Delimiter::*;
 
         match self {
-            RBrace   => LBrace,
+            RBrace => LBrace,
             RBracket => LBracket,
-            RParen   => LParen,
-            LBrace   => RBrace,
+            RParen => LParen,
+            LBrace => RBrace,
             LBracket => RBracket,
-            LParen   => RParen,
+            LParen => RParen,
         }
     }
 
@@ -121,12 +60,12 @@ impl fmt::Display for Delimiter {
         use self::Delimiter::*;
 
         let s = match self {
-            LBrace   => "{",
+            LBrace => "{",
             LBracket => "[",
-            LParen   => "(",
-            RBrace   => "}",
+            LParen => "(",
+            RBrace => "}",
             RBracket => "]",
-            RParen   => ")",
+            RParen => ")",
         }
         .to_string();
 
@@ -157,6 +96,7 @@ pub enum Token {
     Logic(LogicOp),
 
     // Types
+    TypeVar(String),
     Data,
     Type,
     New,
@@ -168,6 +108,7 @@ pub enum Token {
     // Control-flow
     If,
     Unless,
+    Else,
     While,
     Until,
     For,
@@ -211,14 +152,14 @@ impl fmt::Display for Token {
             Arith(op) => op.to_string(),
             Logic(op) => op.to_string(),
             other => match other {
-                Identifier(_) => "Identifier",
-                DocComment(_) => "DocComment",
+                Identifier(ident) => ident.as_str(),
+                DocComment(doc) => doc.as_str(),
 
-                StringLiteral(_) => "StringLiteral",
-                CharLiteral(_) => "CharLiteral",
-                IntLiteral(_) => "IntLiteral",
-                NatLiteral(_) => "NatLiteral",
-                FloatLiteral(_) => "FloatLiteral",
+                StringLiteral(strl) => strl.as_str(),
+                CharLiteral(chl) => format!("{}", chl),
+                IntLiteral(intl) => format!("{}", intl),
+                NatLiteral(natl) => format!("{}", natl),
+                FloatLiteral(fltl) => format!("{}", fltl),
                 SelfLit => "SelfLit",
 
                 Data => "data",
@@ -230,6 +171,7 @@ impl fmt::Display for Token {
                 SelfTy => "Self",
 
                 If => "if",
+                Else => "else",
                 Unless => "unless",
                 While => "while",
                 Until => "until",
@@ -263,7 +205,7 @@ impl fmt::Display for Token {
             .to_string(),
         };
 
-        write!(f, "{}", s)
+        write!(f, "\"{}\"", s)
     }
 }
 

@@ -12,5 +12,10 @@ failure = "0.1"
 plex =  "0.2"
 unicode-xid = "0.1"
 id-arena = "2.2"
+lalrpop-util = "0.14.0"
 
 symbol = { path = "../symbol" }
+base = { path = "../base" }
+
+[build-dependencies]
+lalrpop = "0.14.0"

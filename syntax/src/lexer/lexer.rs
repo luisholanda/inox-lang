@@ -9,7 +9,6 @@ use crate::lexer::error::{LexerError, PlexLexerError};
 use crate::lexer::escaped::unescape;
 use crate::lexer::numeric::{float_literal, non_float_literal};
 use crate::lexer::token::*;
-use crate::lexer::token::PlexToken::LexToken;
 
 fn scan_escape_code(text: &str) -> PlexToken {
     if let Some(ch) = unescape(text) {
@@ -28,7 +27,7 @@ fn is_ident_start(ch: char) -> bool {
 }
 
 fn is_ident_continue(ch: char) -> bool {
-    UnicodeXID::is_xid_continue(ch) || ch == '_'
+    UnicodeXID::is_xid_continue(ch) || ch == '_' || ch == '\''
 }
 
 fn is_separator(ch: char) -> bool {
@@ -50,7 +49,6 @@ pub struct Lexer<'inp> {
     pub warnings: Vec<LexerError>,
 
     // Peek caching
-
     /// Next token returned in the source input.
     peek_tok: Option<PlexToken>,
     /// Source input text that generated the peeked token.
@@ -136,7 +134,10 @@ impl<'inp> Lexer<'inp> {
             let span = self.shift_location(delta);
 
             match token {
-                PlexToken::EOF => { self.receive_eof(); break },
+                PlexToken::EOF => {
+                    self.receive_eof();
+                    break;
+                }
                 PlexToken::Error(placeholder, plex_err) => {
                     let err = plex_err.into_lexer_error(span);
                     self.errors.push(err);
@@ -148,7 +149,7 @@ impl<'inp> Lexer<'inp> {
                 }
                 PlexToken::IdentStart => {
                     let head = delta.chars().next().unwrap();
-                    return Some(self.scan_identifier(head, span))
+                    return Some(self.scan_identifier(head, span));
                 }
                 _ => continue,
             }
@@ -202,14 +203,19 @@ impl<'inp> Lexer<'inp> {
         let mut ident = String::new();
 
         if !is_ident_start(head) {
-            self.errors.push(LexerError::UnexpectedCharacter { start, found: head })
-        } else { ident.push(head) }
+            self.errors
+                .push(LexerError::UnexpectedCharacter { start, found: head });
+        } else {
+            ident.push(head);
+        }
 
-        let mut end= start.end();
+        let mut end = start.end();
         let mut offset = 0usize;
 
         for curr in self.remaining.chars() {
-            if is_separator(curr) { break }
+            if is_separator(curr) {
+                break;
+            }
 
             end.shift(curr);
 
@@ -219,7 +225,7 @@ impl<'inp> Lexer<'inp> {
             } else {
                 self.errors.push(LexerError::UnexpectedCharacter {
                     start: span(start.start(), end),
-                    found: curr
+                    found: curr,
                 })
             }
         }
@@ -227,7 +233,15 @@ impl<'inp> Lexer<'inp> {
 
         self.remaining = &self.remaining[offset..];
 
-        spanned2(start.start(), end, Token::Identifier(ident))
+        let token = if ident.ends_with('\'') {
+            // Remove apostophre before sending token.
+            ident.pop()
+            Token::TypeVar(ident)
+        } else {
+            Token::Identifier(ident)
+        };
+
+        spanned2(start.start(), end, token)
     }
 
     /// Aggregate documentation comments into one big token.
@@ -252,9 +266,7 @@ impl<'inp> Lexer<'inp> {
                     end = next.span.end();
 
                     if !has_leading_space {
-                        let warn = LexerError::MissingLeadingWhitespace {
-                            start: next.span,
-                        };
+                        let warn = LexerError::MissingLeadingWhitespace { start: next.span };
                         self.warnings.push(warn)
                     }
                 }
@@ -274,11 +286,12 @@ impl<'inp> Lexer<'inp> {
 
             let start = self.current;
             self.current.shift(' ');
-            self.errors.push(LexerError::UnexpectedEOF { start: span(start, self.current) })
+            self.errors.push(LexerError::UnexpectedEOF {
+                start: span(start, self.current),
+            })
         }
     }
 }
-
 
 // Delimiter stack fix.
 impl<'inp> Lexer<'inp> {
@@ -490,6 +503,7 @@ lexer! {
     r#"Self"#   => (PlexToken::LexToken(Token::SelfTy), text),
 
     r#"if"#     => (PlexToken::LexToken(Token::If), text),
+    r#"else"#   => (PlexToken::LexToken(Token::Else), text),
     r#"unless"# => (PlexToken::LexToken(Token::Unless), text),
     r#"while"#  => (PlexToken::LexToken(Token::While), text),
     r#"until"#  => (PlexToken::LexToken(Token::Until), text),
@@ -680,17 +694,18 @@ mod test {
     #[test]
     fn flow_keywords() {
         test! {
-            "if unless while until for in loop break continue return",
-            "~~                                                     " => Token::If,
-            "   ~~~~~~                                              " => Token::Unless,
-            "          ~~~~~                                        " => Token::While,
-            "                ~~~~~                                  " => Token::Until,
-            "                      ~~~                              " => Token::For,
-            "                          ~~                           " => Token::In,
-            "                             ~~~~                      " => Token::Loop,
-            "                                  ~~~~~                " => Token::Break,
-            "                                        ~~~~~~~~       " => Token::Continue,
-            "                                                 ~~~~~~" => Token::Return,
+            "if else unless while until for in loop break continue return",
+            "~~                                                          " => Token::If,
+            "   ~~~~                                                     " => Token::Else,
+            "        ~~~~~~                                              " => Token::Unless,
+            "               ~~~~~                                        " => Token::While,
+            "                     ~~~~~                                  " => Token::Until,
+            "                           ~~~                              " => Token::For,
+            "                               ~~                           " => Token::In,
+            "                                  ~~~~                      " => Token::Loop,
+            "                                       ~~~~~                " => Token::Break,
+            "                                             ~~~~~~~~       " => Token::Continue,
+            "                                                      ~~~~~~" => Token::Return,
         }
     }
 
