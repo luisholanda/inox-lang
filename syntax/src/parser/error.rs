@@ -2,7 +2,7 @@ use codespan_reporting::{Diagnostic, Label};
 use failure::Fail;
 use lalrpop_util;
 
-use symbol::pos::{Location, Span, span, HasSpan};
+use symbol::pos::{span, HasSpan, Location, Span};
 
 use crate::lexer::token::Token;
 
@@ -15,43 +15,55 @@ pub enum ParserError {
     #[fail(display = "An invalid token was found in location {}", location)]
     InvalidToken { location: Span<Location> },
     /// An unexpected token was found when others are expected.
-    #[fail(display = "An unexpected token was found in location {}: found {}, expected one of {}", location, found, expected)]
-    UnrecognizedToken { location: Span<Location>, found: Token, expected: Vec<String> },
+    #[fail(
+        display = "An unexpected token was found in location {}: found {}, expected one of {:?}",
+        location, found, expected
+    )]
+    UnrecognizedToken {
+        location: Span<Location>,
+        found: Token,
+        expected: Vec<String>,
+    },
     /// Receive EOF when other tokens are expected.
     #[fail(display = "Unexpected EOF: expected one of {:?}", expected)]
     UnexpectedEOF { expected: Vec<String> },
     /// An extra token was found in a location.
-    #[fail(display = "Found an extra token in location {:?}: {:?}", location, token)]
-    ExtraToken { location: Span<Location>, token: Token },
+    #[fail(display = "Found an extra token in location {}: {}", location, token)]
+    ExtraToken {
+        location: Span<Location>,
+        token: Token,
+    },
     /// Fatal error.
     ///
     /// This kind of error shouldn't happen.
     #[fail(display = "{:?}", error)]
-    FatalError { error: &'static str }
+    FatalError { error: &'static str },
 }
 
 impl ParserError {
     pub fn from_lalrpop(error: LALRPopError) -> Self {
         use lalrpop_util::ParseError::*;
         match error {
-            InvalidToken{location} => ParserError::InvalidToken{location: span(location, location)},
-            UnrecognizedToken{token, expected} => {
-               match token {
-                    None => ParserError::UnexpectedEOF{expected},
-                    Some((l, token, r)) => {
-                        let location = span(l, r);
+            InvalidToken { location } => ParserError::InvalidToken {
+                location: span(location, location),
+            },
+            UnrecognizedToken { token, expected } => match token {
+                None => ParserError::UnexpectedEOF { expected },
+                Some((l, token, r)) => {
+                    let location = span(l, r);
 
-                        ParserError::UnrecognizedToken{location, found: token, expected}
+                    ParserError::UnrecognizedToken {
+                        location,
+                        found: token,
+                        expected,
                     }
                 }
             },
-            ExtraToken{token} => {
-                ParserError::ExtraToken{
-                    location: span(token.0, token.2),
-                    token:    token.1
-                }
+            ExtraToken { token } => ParserError::ExtraToken {
+                location: span(token.0, token.2),
+                token: token.1,
             },
-            User{error} => ParserError::FatalError{error}
+            User { error } => ParserError::FatalError { error },
         }
     }
 
@@ -60,22 +72,28 @@ impl ParserError {
 
         // TODO(luisholanda): Convert `token` and expected` to human-readable format.
         match self {
-            InvalidToken{location} => {
+            InvalidToken { location } => {
                 Diagnostic::new_error(format!("An invalid token was found."))
                     .with_label(Label::new_primary(location.span()))
             }
-            UnrecognizedToken{location, found, expected} => {
-                Diagnostic::new_error(format!("Found token {}, expected one of {:?}", found, expected))
-                    .with_label(Label::new_primary(location.span()))
-            }
-            UnexpectedEOF{expected} => {
-                Diagnostic::new_error(format!("End of file reached, expected one of {:?}", expected))
-            }
-            ExtraToken{location, token} => {
+            UnrecognizedToken {
+                location,
+                found,
+                expected,
+            } => Diagnostic::new_error(format!(
+                "Found token {}, expected one of {:?}",
+                found, expected
+            ))
+            .with_label(Label::new_primary(location.span())),
+            UnexpectedEOF { expected } => Diagnostic::new_error(format!(
+                "End of file reached, expected one of {:?}",
+                expected
+            )),
+            ExtraToken { location, token } => {
                 Diagnostic::new_error(format!("Extra token {} found", token))
                     .with_label(Label::new_primary(location.span()))
             }
-            FatalError{error} => {
+            FatalError { error } => {
                 panic!("Fatal parser error: {}", error);
             }
         }
@@ -88,13 +106,8 @@ impl From<LALRPopError> for ParserError {
     }
 }
 
-
 impl Into<Diagnostic> for ParserError {
     fn into(self) -> Diagnostic {
         self.to_diagnostic()
     }
 }
-
-
-
-

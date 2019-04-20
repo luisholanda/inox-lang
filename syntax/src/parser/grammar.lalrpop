@@ -1,6 +1,3 @@
-use bumpalo::Bump;
-use bumpalo::collections::{Vec as BVec, String as BString};
-
 use symbol::pos::Location;
 
 use crate::lexer::token::{Token, Delimiter};
@@ -9,11 +6,7 @@ use super::error::ParserError;
 
 
 #[LALR]
-grammar<'arena>(
-    arena: &'arena Bump,
-    errors: &mut Vec<ParserError>,
-    string_arena: &'arena Bump,
-    );
+grammar(errors: &mut Vec<ParserError>);
 
 extern {
     type Error = &'static str;
@@ -104,30 +97,30 @@ extern {
 
 either<e1, e2> = { e1, e2 };
 
-comma<e>: BVec<'arena, e> = {
+comma<e>: Vec<e> = {
     <es: (<e> ",")*> <e_new:e> => {
-        let mut es = BVec::from_iter_in(es.into_iter(), &arena);
+        let mut es = es;
         es.push(e_new);
 
         es
     },
 };
 
-many<e>: BVec<'arena, e> = {
+many<e>: Vec<e> = {
     <es:many<e>> <e_new:e> => {
         let mut es = es;
         es.push(e_new);
 
         es
     },
-     => BVec::new_in(arena),
+     => vec![],
 };
 
 //
 // Modules
 //
 
-pub module: Module<'arena, BString<'arena>> = {
+pub module: Module<String> = {
     many<def> => Module{ definitions: <> }
 };
 
@@ -135,29 +128,29 @@ pub module: Module<'arena, BString<'arena>> = {
 // Top-level definitions
 //
 
-pub def: Def<'arena, BString<'arena>> = {
+pub def: Def<String> = {
     func => Def::Func(<>),
     sign => Def::Sign(<>),
 };
 
-func: Func<'arena, BString<'arena>> = {
+func: Func<String> = {
     <name:identifier> "(" <args:comma<identifier>?> ")" "=" <body:block> => {
         Func{
             name,
-            args: args.unwrap_or_else(|| BVec::new_in(arena)),
+            args: args.unwrap_or_else(Vec::new),
             body,
         }
     },
     <name: identifier> "=" <body: block> => {
         Func{
             name,
-            args: BVec::new_in(arena),
+            args: vec![],
             body,
         }
     }
 };
 
-sign: Sign<'arena, BString<'arena>> = {
+sign: Sign<String> = {
     <name: identifier> ":" <type_: type_> => Sign{name, type_},
 };
 
@@ -165,80 +158,80 @@ sign: Sign<'arena, BString<'arena>> = {
 // Types
 //
 
-pub type_: Type<'arena, BString<'arena>> = { forall, unconstraint };
+pub type_: Type<String> = { forall, unconstraint };
 
-forall: Type<'arena, BString<'arena>> = {
+forall: Type<String> = {
     "forall" <vars: many<type_var>> <c:constraints?> "." <base: unconstraint> => {
         Type::Forall(Forall{
             vars,
-            base: arena.alloc(base),
+            base: box base,
             constraint: c
         })
     },
 };
 
-constraints: Constraint<'arena, BString<'arena>> = {
+constraints: Constraint<String> = {
     "with" <c:constraint> => c,
 };
 
-constraint: Constraint<'arena, BString<'arena>> = {
+constraint: Constraint<String> = {
     single_constraint,
     "(" <comma<single_constraint>> ")" => Constraint::Parens(<>),
 };
 
-single_constraint: Constraint<'arena, BString<'arena>> = {
+single_constraint: Constraint<String> = {
     <identifier> "[" <comma<base_type>> "]" => Constraint::Constraint(<>),
 };
 
 unconstraint = either<base_type, method>;
 
-base_type: Type<'arena, BString<'arena>> = {
+base_type: Type<String> = {
     arrow,
     type_term,
 };
 
-arrow: Type<'arena, BString<'arena>> = {
-    <p:type_term> "->" <r: base_type> => Type::Arrow(arena.alloc(p), arena.alloc(r)),
+arrow: Type<String> = {
+    <p:type_term> "->" <r: base_type> => Type::Arrow(box p, box r),
     "->" <r: base_type> => {
-        let unit = Type::Term(BString::from_str_in("unit", arena));
+        let unit = Type::Term("unit".to_owned());
 
-        Type::Arrow(arena.alloc(unit), arena.alloc(r))
+        Type::Arrow(box unit, box r)
     }
 };
 
-method: Type<'arena, BString<'arena>> = {
-    "self" "~>" <either<arrow, type_term>> => Type::Method(arena.alloc(<>)),
+method: Type<String> = {
+    "self" "~>" <either<arrow, type_term>> => Type::Method(box <>),
 };
 
-type_term: Type<'arena, BString<'arena>> = {
+type_term: Type<String> = {
     identifier => Type::Term(<>),
     type_var => Type::Var(<>),
     "[" <key:base_type> "=>" <value:base_type> "]" => {
-        let map_type = BString::from_str_in("map", string_arena);
-        let value_types = BVec::from_iter_in(vec![<>].into_iter(), arena);
+        let map_type = "map".to_owned();
+        let value_types = vec![<>];
 
-        Type::App(arena.alloc(Type::Term(map_type)), value_types)
+        Type::App(box Type::Term(map_type), value_types)
     },
     "[" <base_type> "]" => {
-        let vec_type = BString::from_str_in("vec", string_arena);
-        let value_types = BVec::from_iter_in(vec![<>].into_iter(), arena);
+        let vec_type = "vec".to_owned();
+        let value_types = vec![<>];
 
-        Type::App(arena.alloc(Type::Term(vec_type)), value_types)
+        Type::App(box Type::Term(vec_type), value_types)
     },
-    <typ: type_term> "[" <args: comma<base_type>> "]" => Type::App(arena.alloc(typ), args),
-    "(" ")" => Type::Term(BString::from_str_in("unit", arena)),
-    "(" <unconstraint> ")" => Type::Parens(arena.alloc(<>))
+    <typ: type_term> "[" <args: comma<base_type>> "]" => Type::App(box typ, args),
+    "(" ")" => Type::Term("unit".to_owned()),
+    "(" <unconstraint> ")" => Type::Parens(box <>)
 };
 
-type_var: BString<'arena> = {
-    tyvar => BString::from_str_in(<>.as_str(), arena),
+type_var: String = {
+    tyvar => <>
 };
 
 //
 // Statements
 //
 
-pub stmt: Stmt<'arena, BString<'arena>> = {
+pub stmt: Stmt<String> = {
     assign_stmt,
     while_stmt,
     for_stmt,
@@ -247,60 +240,60 @@ pub stmt: Stmt<'arena, BString<'arena>> = {
 };
 
 #[inline]
-assign_stmt: Stmt<'arena, BString<'arena>> = {
-    <to:identifier> "=" <value:expr> ";" => {
+assign_stmt: Stmt<String> = {
+    <to:identifier> "=" <expr:expr> ";" => {
         Stmt::Assign(Assign{
             to,
-            expr: arena.alloc(value)
+            expr
         })
     }
 };
 
 #[inline]
-let_stmt: Stmt<'arena, BString<'arena>> = {
-    "let" <ident:identifier> <typ:(":" <type_>)?> <val:("=" <expr>)?> ";" => {
+let_stmt: Stmt<String> = {
+    "let" <ident:identifier> <typ:(":" <type_>)?> <value:("=" <expr>)?> ";" => {
         Stmt::Let(Let{
             ident,
             typ,
-            value: val.map(|value| &(*arena.alloc(value))),
+            value
         })
     },
 };
 
 #[inline]
-while_stmt: Stmt<'arena, BString<'arena>> = {
+while_stmt: Stmt<String> = {
     "while" <cond:expr> <expr:block> => {
         Stmt::While(While{
-            cond: arena.alloc(cond),
-            expr: arena.alloc(expr)
+            cond,
+            expr
         })
     },
     "until" <cond:expr> <expr:block> => {
         Stmt::Until(While{
-            cond: arena.alloc(cond),
-            expr: arena.alloc(expr),
+            cond,
+            expr,
         })
     }
 };
 
 #[inline]
-for_stmt: Stmt<'arena, BString<'arena>> = {
+for_stmt: Stmt<String> = {
     "for" <value:identifier> "in" <iter:expr> <expr:block> => {
         Stmt::For(For{
             value,
-            iter: arena.alloc(iter),
-            expr: arena.alloc(expr)
+            iter,
+            expr
         })
     },
 };
 
 #[inline]
-expr_stmt: Stmt<'arena, BString<'arena>> = {
+expr_stmt: Stmt<String> = {
     <ex:expr> ";" => {
-        Stmt::Expr(arena.alloc(ex), true)
+        Stmt::Expr(ex, true)
     },
-    block => Stmt::Expr(arena.alloc(<>), false),
-    if_expr => Stmt::Expr(arena.alloc(<>), false)
+    block => Stmt::Expr(<>, false),
+    if_expr => Stmt::Expr(<>, false)
 };
 
 
@@ -308,67 +301,67 @@ expr_stmt: Stmt<'arena, BString<'arena>> = {
 // Expressions.
 //
 
-pub expr: SynExpr<'arena> = {
+pub expr: SynExpr = {
     if_expr,
     or,
     block,
 };
 
-block: SynExpr<'arena> = {
+block: SynExpr = {
     "{" <stmts: many<stmt>> <ex: or?> "}" => {
         let mut stmts = stmts;
 
         if let Some(ex) = ex {
-            stmts.push(Stmt::Expr(arena.alloc(ex), false));
+            stmts.push(Stmt::Expr(ex, false));
         }
 
         Expr::Block(stmts)
     },
 };
 
-if_expr: SynExpr<'arena> = {
+if_expr: SynExpr = {
     if_ => Expr::If(<>),
     unless,
 };
 
 #[inline]
-if_: IfExpr<'arena, BString<'arena>> = {
+if_: IfExpr<String> = {
     "if" <cond:or> <expr:block> <else_expr:( "else" <block> )?> => {
         IfExpr::If{
-            cond:      arena.alloc(cond),
-            expr:      arena.alloc(expr),
-            else_expr: else_expr.map(|ex| &(*arena.alloc(ex)))
+            cond: box cond,
+            expr: box expr,
+            else_expr: else_expr.map(|ex| box ex)
         }
     }
 };
 
 #[inline]
-if_let: IfExpr<'arena, BString<'arena>> = {
+if_let: IfExpr<String> = {
     "if" "let" <name: identifier> "=" <value:or> <expr:block> <else_expr: ("else" <block>)?> => {
         IfExpr::IfLet{
-            assign: arena.alloc(value),
+            assign: box value,
             to: name,
-            expr: arena.alloc(expr),
-            else_expr: else_expr.map(|ex| &(*arena.alloc(ex)))
+            expr: box expr,
+            else_expr: else_expr.map(|ex| box ex)
         }
     }
 };
 
 #[inline]
-unless: SynExpr<'arena> = {
+unless: SynExpr = {
     "unless" <cond: or> <expr: block> <else_expr: ("else" <block>)?> => {
         Expr::Unless(IfExpr::If{
-            cond: arena.alloc(cond),
-            expr: arena.alloc(expr),
-            else_expr: else_expr.map(|ex| &(*arena.alloc(ex))),
+            cond: box cond,
+            expr: box expr,
+            else_expr: else_expr.map(|ex| box ex)
         })
     }
 };
 
-arith<op, next>: SynExpr<'arena> = {
+arith<op, next>: SynExpr = {
     <lhs: arith<op, next>> <op:op> <rhs:next> => {
-        let lhs = arena.alloc(lhs);
-        let rhs = arena.alloc(rhs);
+        let lhs = box lhs;
+        let rhs = box rhs;
 
 
         if let Token::Arith(op) = op {
@@ -380,10 +373,10 @@ arith<op, next>: SynExpr<'arena> = {
     next
 };
 
-logic<op, next>: SynExpr<'arena> = {
+logic<op, next>: SynExpr = {
     <lhs: logic<op, next>> <op: op> <rhs: next> => {
-        let lhs = arena.alloc(lhs);
-        let rhs = arena.alloc(rhs);
+        let lhs = box lhs;
+        let rhs = box rhs;
 
         if let Token::Logic(op) = op {
             Expr::Logic(Logic::Oper(Oper{lhs, op, rhs}))
@@ -398,8 +391,8 @@ logic<op, next>: SynExpr<'arena> = {
 or  = logic<"or", and>;
 and = logic<"and", not>;
 
-not: SynExpr<'arena> = {
-    <n:"not"> <l:comparisons> => Expr::Logic(Logic::Not(arena.alloc(l))),
+not: SynExpr = {
+    <n:"not"> <l:comparisons> => Expr::Logic(Logic::Not(box l)),
     comparisons
 };
 
@@ -411,48 +404,48 @@ mult  = arith<either<"mult", "div">, shift>;
 shift = arith<either<"lshift", "rshift">, pow>;
 pow   = arith<either<"pow", "mod">, question>;
 
-question: SynExpr<'arena> = {
-    <f: factor> "?" => Expr::Question(arena.alloc(f)),
+question: SynExpr = {
+    <f: factor> "?" => Expr::Question(box f),
     factor
 };
 
-factor: SynExpr<'arena> = {
+factor: SynExpr = {
     <f:factor> "(" <args:comma<expr>?> ")" => {
-        let func = arena.alloc(f);
+        let func = box f;
 
-        Expr::Call{func, args: args.unwrap_or_else(|| BVec::new_in(&arena))}
+        Expr::Call(Call{func, args: args.unwrap_or_else(Vec::new)})
     },
     term => Expr::Term(<>),
-    "(" <expr> ")" => Expr::Parens(arena.alloc(<>))
+    "(" <expr> ")" => Expr::Parens(box <>)
 };
 
-term: Term<'arena, BString<'arena>> = {
+term: Term<String> = {
     identifier => Term::Var(<>),
     literal => Term::Lit(<>),
     <owner:factor> "." <field:identifier> => {
-        let owner = arena.alloc(owner);
+        let owner = box owner;
         Term::Field{owner, field}
     },
     <owner:factor> "[" <index:expr> "]" => {
-        let owner = arena.alloc(owner);
-        let index = arena.alloc(index);
+        let owner = box owner;
+        let index = box index;
         Term::Index{owner, index}
     },
 };
 
-literal: Literal<'arena, BString<'arena>> = {
+literal: Literal<String> = {
     charl   => Literal::Char(<>),
     intl    => Literal::Integer(<>),
     fltl    => Literal::Float(<>),
     natl    => Literal::Natural(<>),
-    stringl => Literal::String(BString::from_str_in(<>.as_str(), string_arena)),
+    stringl => Literal::String(<>),
     "[" <items:comma<(<expr> "=>" <expr>)>> "]" => Literal::Map(<>),
     "[" <items:comma<expr>?> "]" => {
-        Literal::Vec(<>.unwrap_or_else(|| BVec::new_in(arena)))
+        Literal::Vec(<>.unwrap_or_else(Vec::new))
     },
 };
 
-identifier: BString<'arena> = {
-    ident => BString::from_str_in(<>.as_str(), arena)
+identifier: String = {
+    ident => <>
 };
 

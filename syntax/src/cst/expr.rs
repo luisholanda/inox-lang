@@ -1,101 +1,103 @@
+use std::boxed::Box;
 use std::fmt;
-
-use bumpalo::collections::{Vec, String};
 
 use crate::cst::stmt::*;
 
-pub type ExprRef<'arena, N> = &'arena Expr<'arena, N>; 
+pub type ExprRef<N> = Box<Expr<N>>;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Expr<'arena, N> {
-    Term(Term<'arena, N>),
-    Parens(ExprRef<'arena, N>),
-    Block(Vec<'arena, Stmt<'arena, N>>),
-    If(IfExpr<'arena, N>),
-    Unless(IfExpr<'arena, N>),
-    Match(MatchExpr<'arena, N>),
-    Arith(Oper<'arena, ArithOp, N>),
-    Logic(Logic<'arena, N>),
-    Question(ExprRef<'arena, N>),
-    Call {
-        func: ExprRef<'arena, N>,
-        args: Vec<'arena, Expr<'arena, N>>,
-    },
+pub enum Expr<N> {
+    Term(Term<N>),
+    Parens(ExprRef<N>),
+    Block(Vec<Stmt<N>>),
+    If(IfExpr<N>),
+    Unless(IfExpr<N>),
+    Match(MatchExpr<N>),
+    Arith(Oper<ArithOp, N>),
+    Logic(Logic<N>),
+    Question(ExprRef<N>),
+    Call(Call<N>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term<'arena, N> {
+pub struct Call<N> {
+    pub func: ExprRef<N>,
+    pub args: Vec<Expr<N>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Term<N> {
     Var(N),
-    Lit(Literal<'arena, N>),
+    Lit(Literal<N>),
     Field {
-        owner: ExprRef<'arena, N>,
+        owner: ExprRef<N>,
         field: N,
     },
     Index {
-        owner: ExprRef<'arena, N>,
-        index: ExprRef<'arena, N>,
+        owner: ExprRef<N>,
+        index: ExprRef<N>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Literal<'arena, N> {
-    String(String<'arena>),
+pub enum Literal<N> {
+    String(String),
     Integer(i32),
     Natural(u32),
     Float(f32),
     Char(char),
-    Vec(Vec<'arena, Expr<'arena, N>>),
-    Map(Vec<'arena, (Expr<'arena, N>, Expr<'arena, N>)>)
+    Vec(Vec<Expr<N>>),
+    Map(Vec<(Expr<N>, Expr<N>)>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum IfExpr<'arena, N> {
+pub enum IfExpr<N> {
     If {
-        cond: ExprRef<'arena, N>,
-        expr: ExprRef<'arena, N>,
-        else_expr: Option<ExprRef<'arena, N>>,
+        cond: ExprRef<N>,
+        expr: ExprRef<N>,
+        else_expr: Option<ExprRef<N>>,
     },
     IfLet {
-        assign: ExprRef<'arena, N>,
+        assign: ExprRef<N>,
         to: N,
-        expr: ExprRef<'arena, N>,
-        else_expr: Option<ExprRef<'arena, N>>,
+        expr: ExprRef<N>,
+        else_expr: Option<ExprRef<N>>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MatchExpr<'arena, N> {
-    pub expr: ExprRef<'arena, N>,
-    pub branches: Vec<'arena, MatchBranch<'arena, N>>,
+pub struct MatchExpr<N> {
+    pub expr: ExprRef<N>,
+    pub branches: Vec<MatchBranch<N>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MatchBranch<'arena, N> {
-    pub case: MatchCase<'arena, N>,
-    pub expr: ExprRef<'arena, N>,
+pub struct MatchBranch<N> {
+    pub case: MatchCase<N>,
+    pub expr: ExprRef<N>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MatchCase<'arena, N> {
+pub enum MatchCase<N> {
     Term(N),
-    OneOf(Vec<'arena, MatchCase<'arena, N>>),
+    OneOf(Vec<MatchCase<N>>),
     If {
-        case: &'arena MatchCase<'arena, N>,
-        cond: ExprRef<'arena, N>,
+        case: Box<MatchCase<N>>,
+        cond: ExprRef<N>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Logic<'arena, N> {
-    Not(ExprRef<'arena, N>),
-    Oper(Oper<'arena, LogicOp, N>),
+pub enum Logic<N> {
+    Not(ExprRef<N>),
+    Oper(Oper<LogicOp, N>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Oper<'arena, Op, N> {
+pub struct Oper<Op, N> {
     pub op: Op,
-    pub lhs: ExprRef<'arena, N>,
-    pub rhs: ExprRef<'arena, N>,
+    pub lhs: ExprRef<N>,
+    pub rhs: ExprRef<N>,
 }
 
 /// A binary arithmetic operator token.

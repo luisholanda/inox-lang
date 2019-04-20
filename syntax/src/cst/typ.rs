@@ -1,27 +1,27 @@
-use bumpalo::collections::Vec;
+use std::boxed::Box;
 
-type TypeRef<'arena, N> = &'arena Type<'arena, N>;
+type TypeRef<N> = Box<Type<N>>;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Type<'arena, N> {
+pub enum Type<N> {
     Term(N),
     Var(N),
-    App(TypeRef<'arena, N>, Vec<'arena, Type<'arena, N>>),
-    Arrow(TypeRef<'arena, N>, TypeRef<'arena, N>),
-    Method(TypeRef<'arena, N>),
-    Parens(TypeRef<'arena, N>),
-    Forall(Forall<'arena, N>),
+    App(TypeRef<N>, Vec<Type<N>>),
+    Arrow(TypeRef<N>, TypeRef<N>),
+    Method(TypeRef<N>),
+    Parens(TypeRef<N>),
+    Forall(Forall<N>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Forall<'arena, N> {
-    pub vars: Vec<'arena, N>,
-    pub constraint: Option<Constraint<'arena, N>>,
-    pub base: TypeRef<'arena, N>,
+pub struct Forall<N> {
+    pub vars: Vec<N>,
+    pub constraint: Option<Constraint<N>>,
+    pub base: TypeRef<N>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Constraint<'arena, N> {
-    Constraint(N, Vec<'arena, Type<'arena, N>>),
-    Parens(Vec<'arena, Constraint<'arena, N>>),
+pub enum Constraint<N> {
+    Constraint(N, Vec<Type<N>>),
+    Parens(Vec<Constraint<N>>),
 }
