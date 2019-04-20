@@ -234,8 +234,8 @@ impl<'inp> Lexer<'inp> {
         self.remaining = &self.remaining[offset..];
 
         let token = if ident.ends_with('\'') {
-            // Remove apostophre before sending token.
-            ident.pop()
+            // Remove apostrophe before sending token.
+            ident.pop();
             Token::TypeVar(ident)
         } else {
             Token::Identifier(ident)

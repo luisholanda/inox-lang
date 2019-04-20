@@ -151,15 +151,15 @@ impl fmt::Display for Token {
             Delim(delim) => delim.to_string(),
             Arith(op) => op.to_string(),
             Logic(op) => op.to_string(),
+            CharLiteral(chl) => format!("{}", chl),
+            IntLiteral(intl) => format!("{}", intl),
+            NatLiteral(natl) => format!("{}", natl),
+            FloatLiteral(fltl) => format!("{}", fltl),
             other => match other {
                 Identifier(ident) => ident.as_str(),
                 DocComment(doc) => doc.as_str(),
 
                 StringLiteral(strl) => strl.as_str(),
-                CharLiteral(chl) => format!("{}", chl),
-                IntLiteral(intl) => format!("{}", intl),
-                NatLiteral(natl) => format!("{}", natl),
-                FloatLiteral(fltl) => format!("{}", fltl),
                 SelfLit => "SelfLit",
 
                 Data => "data",
