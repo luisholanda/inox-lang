@@ -46,12 +46,12 @@ impl Into<BytePos> for Location {
 }
 
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq)]
-pub struct Spanned<T, Pos> {
+pub struct Spanned<T, Pos: Copy> {
     pub span: Span<Pos>,
-    pub value: T,
+    value: T,
 }
 
-impl<T, Pos> Spanned<T, Pos> {
+impl<T, Pos: Copy> Spanned<T, Pos> {
     pub fn map<U, F>(self, mut f: F) -> Spanned<U, Pos>
     where
         F: FnMut(T) -> U,
@@ -60,6 +60,16 @@ impl<T, Pos> Spanned<T, Pos> {
             span: self.span,
             value: f(self.value),
         }
+    }
+
+    pub fn into_inner(self) -> T {
+        self.value
+    }
+}
+
+impl<T, Pos: Copy> AsRef<T> for Spanned<T, Pos> {
+    fn as_ref(&self) -> &T {
+        &self.value
     }
 }
 
@@ -70,22 +80,24 @@ impl<T: fmt::Display, Pos: fmt::Display + Copy> fmt::Display for Spanned<T, Pos>
 }
 
 /// Construct a span from two positions.
-pub fn span<Pos: Ord>(start: Pos, end: Pos) -> Span<Pos> {
+pub fn span<Pos: Copy + Ord>(start: Pos, end: Pos) -> Span<Pos> {
     Span::new(start, end)
 }
 
 /// Construct a spanned value from the base value and it's position.
-pub fn spanned<T, Pos: Ord>(span: Span<Pos>, value: T) -> Spanned<T, Pos> {
+pub fn spanned<T, Pos: Copy + Ord>(span: Span<Pos>, value: T) -> Spanned<T, Pos> {
     Spanned { span, value }
 }
 
 // Construct a spanned value from the base value and it's position components.
-pub fn spanned2<T, Pos: Ord>(start: Pos, end: Pos, value: T) -> Spanned<T, Pos> {
+pub fn spanned2<T, Pos: Copy + Ord>(start: Pos, end: Pos, value: T) -> Spanned<T, Pos> {
     Spanned {
         span: span(start, end),
         value,
     }
 }
+
+pub type Located<T> = Spanned<T, Location>;
 
 pub trait HasSpan {
     fn span(&self) -> Span<BytePos>;
