@@ -179,6 +179,7 @@ pub fn visit_until<'c, V, N>(visitor: &mut V, until: &'c While<N>)
 where
     V: Visitor<'c>,
 {
+    visitor.visit_while(until);
 }
 
 pub fn visit_for<'c, V, N>(visitor: &mut V, for_: &'c For<N>)
@@ -283,7 +284,7 @@ where
 
 pub fn visit_unless<'c, V, N>(visitor: &mut V, unless: &'c IfExpr<N>)
 where
-    V: Visitor<'c>
+    V: Visitor<'c>,
 {
     visit_if(visitor, unless);
 }
@@ -318,7 +319,7 @@ where
                 visitor.visit_match_case(case);
             }
         }
-        MatchCase::If {case, cond} => {
+        MatchCase::If { case, cond } => {
             visitor.visit_expr(cond);
             visitor.visit_match_case(case);
         }
@@ -380,7 +381,7 @@ where
                 visitor.visit_expr(key);
             }
         }
-        _ => ()
+        _ => (),
     }
 }
 
@@ -399,7 +400,10 @@ where
             }
         }
         Type::Arrow(arg, ret) => {
-            visitor.visit_type(arg);
+            if let Some(ty) = arg {
+                visitor.visit_type(ty);
+            }
+
             visitor.visit_type(ret);
         }
         Type::Method(ret) => visitor.visit_type(ret),

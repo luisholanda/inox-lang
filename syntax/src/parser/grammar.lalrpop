@@ -1,3 +1,4 @@
+use std::boxed::Box;
 use symbol::pos::Location;
 
 use crate::lexer::token::{Token, Delimiter};
@@ -188,36 +189,20 @@ unconstraint = either<base_type, method>;
 base_type: Type<String> = {
     arrow,
     type_term,
+    "->" <r:base_type> => Type::Arrow(None, box <>),
 };
 
 arrow: Type<String> = {
-    <p:type_term> "->" <r: base_type> => Type::Arrow(box p, box r),
-    "->" <r: base_type> => {
-        let unit = Type::Term("unit".to_owned());
-
-        Type::Arrow(box unit, box r)
-    }
+    <p:type_term> "->" <r: base_type> => Type::Arrow(Some(box p), box r),
 };
 
 method: Type<String> = {
-    "self" "~>" <either<arrow, type_term>> => Type::Method(box <>),
+    <r:type_term> "~>" <ret:either<arrow, type_term>> => Type::Method(box Type::Arrow(Some(box r), box ret)),
 };
 
 type_term: Type<String> = {
     identifier => Type::Term(<>),
     type_var => Type::Var(<>),
-    "[" <key:base_type> "=>" <value:base_type> "]" => {
-        let map_type = "map".to_owned();
-        let value_types = vec![<>];
-
-        Type::App(box Type::Term(map_type), value_types)
-    },
-    "[" <base_type> "]" => {
-        let vec_type = "vec".to_owned();
-        let value_types = vec![<>];
-
-        Type::App(box Type::Term(vec_type), value_types)
-    },
     <typ: type_term> "[" <args: comma<base_type>> "]" => Type::App(box typ, args),
     "(" ")" => Type::Term("unit".to_owned()),
     "(" <unconstraint> ")" => Type::Parens(box <>)
