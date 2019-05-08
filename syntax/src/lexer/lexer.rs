@@ -500,7 +500,6 @@ lexer! {
     r#"struct"# => (PlexToken::LexToken(Token::Struct), text),
     r#"impl"#   => (PlexToken::LexToken(Token::Impl), text),
     r#"forall"# => (PlexToken::LexToken(Token::Forall), text),
-    r#"Self"#   => (PlexToken::LexToken(Token::SelfTy), text),
 
     r#"if"#     => (PlexToken::LexToken(Token::If), text),
     r#"else"#   => (PlexToken::LexToken(Token::Else), text),
@@ -679,15 +678,14 @@ mod test {
     #[test]
     fn type_keywords() {
         test! {
-            "self data type new struct impl forall Self",
-            "~~~~                                      " => Token::SelfLit,
-            "     ~~~~                                 " => Token::Data,
-            "          ~~~~                            " => Token::Type,
-            "               ~~~                        " => Token::New,
-            "                   ~~~~~~                 " => Token::Struct,
-            "                          ~~~~            " => Token::Impl,
-            "                               ~~~~~~     " => Token::Forall,
-            "                                      ~~~~" => Token::SelfTy,
+            "self data type new struct impl forall",
+            "~~~~                                 " => Token::SelfLit,
+            "     ~~~~                            " => Token::Data,
+            "          ~~~~                       " => Token::Type,
+            "               ~~~                   " => Token::New,
+            "                   ~~~~~~            " => Token::Struct,
+            "                          ~~~~       " => Token::Impl,
+            "                               ~~~~~~" => Token::Forall,
         }
     }
 

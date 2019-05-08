@@ -103,7 +103,6 @@ pub enum Token {
     Struct,
     Impl,
     Forall,
-    SelfTy,
 
     // Control-flow
     If,

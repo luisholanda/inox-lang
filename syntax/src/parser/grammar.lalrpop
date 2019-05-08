@@ -52,7 +52,6 @@ extern {
         "struct" => Token::Struct,
         "impl"   => Token::Impl,
         "forall" => Token::Forall,
-        "Self"   => Token::SelfTy,
 
         // Control-flow
         "if"       => Token::If,
