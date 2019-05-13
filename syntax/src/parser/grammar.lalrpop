@@ -151,7 +151,7 @@ func: Func<String> = {
 };
 
 sign: Sign<String> = {
-    <name: identifier> ":" <type_: type_> => Sign{name, type_},
+    <doc: doc?> <name: identifier> ":" <type_: type_> => Sign{name, type_, doc},
 };
 
 //

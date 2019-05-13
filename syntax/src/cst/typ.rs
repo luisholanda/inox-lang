@@ -7,7 +7,7 @@ pub enum Type<N> {
     Term(N),
     Var(N),
     App(TypeRef<N>, Vec<Type<N>>),
-    Arrow(TypeRef<N>, TypeRef<N>),
+    Arrow(Option<TypeRef<N>>, TypeRef<N>),
     Method(TypeRef<N>),
     Parens(TypeRef<N>),
     Forall(Forall<N>),

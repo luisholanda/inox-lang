@@ -155,6 +155,7 @@ where
     Sign {
         name: visitor.fold_name(&sign.name),
         type_: visitor.fold_type(&sign.type_),
+        doc: sign.doc.as_ref().cloned(),
     }
 }
 

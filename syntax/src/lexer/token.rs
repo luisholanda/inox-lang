@@ -167,7 +167,7 @@ impl fmt::Display for Token {
                 Struct => "struct",
                 Impl => "impl",
                 Forall => "forall",
-                SelfTy => "Self",
+                TypeVar(var) => var.as_str(),
 
                 If => "if",
                 Else => "else",
@@ -199,7 +199,7 @@ impl fmt::Display for Token {
                 Equals => "=",
                 Pipe => "|",
 
-                _ => unreachable!("shouldn't reach here."),
+                _ => unreachable!("Shouldn't reach here.")
             }
             .to_string(),
         };

@@ -177,15 +177,15 @@ impl<'inp> Lexer<'inp> {
     fn produce_token(&mut self) -> Option<()> {
         let token = self.bump_token()?;
 
-        let next = match token.value {
+        let next = match token.as_ref() {
             Token::DocComment(_) => self.agg_doc_comments(token),
             Token::Delim(tok) if tok.is_open() => {
-                self.open_braces.push(tok);
+                self.open_braces.push(*tok);
 
                 token
             }
             Token::Delim(delim) => {
-                if !self.close_delimiter(delim, token.span) {
+                if !self.close_delimiter(*delim, token.span) {
                     return Some(());
                 }
                 token
@@ -251,7 +251,7 @@ impl<'inp> Lexer<'inp> {
         let start = first.span.start();
         let mut end = first.span.end();
 
-        let mut docs = match first.value {
+        let mut docs = match first.into_inner() {
             Token::DocComment(doc) => vec![doc],
             _ => panic!("agg_doc_comment called with non-documentation token"),
         };
@@ -451,8 +451,6 @@ lexer! {
     r#"((-[1-9]|[1-9])[0-9]*|0)"# => (non_float_literal(text, 10), text),
     r#""[^"]*""# => {
         let trimmed = unsafe { text.get_unchecked(1..text.len()-1) };
-
-        println!("{}", trimmed);
 
         (PlexToken::LexToken(Token::StringLiteral(trimmed.to_owned())), text)
     },

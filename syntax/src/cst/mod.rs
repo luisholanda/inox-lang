@@ -43,4 +43,6 @@ pub struct Sign<N> {
     pub name: N,
     /// The type of the symbol referenced by `name`.
     pub type_: Type<N>,
+    /// The optional documentation of the signature.
+    pub doc: Option<String>,
 }

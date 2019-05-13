@@ -162,7 +162,8 @@ impl<'inp> Iterator for LALRLexer<'inp> {
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer
             .next()
-            .map(|t| Ok((t.span.start(), t.value, t.span.end())))
+            .map(|t| (t.span, t.into_inner()))
+            .map(|(s, t)| Ok((s.start(), t, s.end())))
     }
 }
 
