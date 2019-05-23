@@ -1,9 +1,9 @@
 use std::fs::File;
 use std::io::prelude::*;
 
-use bumpalo::Bump;
-
+use syntax::lexer::Lexer;
 use syntax::parser::ParserSession;
+
 
 fn main() -> std::io::Result<()> {
     let mut file = File::open("./example.in")?;
@@ -11,10 +11,13 @@ fn main() -> std::io::Result<()> {
 
     file.read_to_string(&mut content)?;
 
-    let mut arena = Bump::new();
-    let mut string_pool = Bump::new();
+    let lexer = Lexer::new(&content);
 
-    let mut session = ParserSession::new(&mut arena, &mut string_pool);
+    for tok in lexer {
+        println!("{:^10} ~ {:^10}: {:?}", tok.span.start(), tok.span.end(), tok.as_ref());
+    }
+
+    let mut session = ParserSession::new();
 
     let (modu, errors, lexer_errors) = session.parse(&content);
     println!("{:#?}", modu);

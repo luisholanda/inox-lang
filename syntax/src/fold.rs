@@ -181,6 +181,7 @@ where
 
     Let {
         ident: visitor.fold_name(&let_.ident),
+        mutable: let_.mutable,
         typ: let_.typ.as_ref().map(|typ| visitor.fold_type(typ)),
         value: folded_value,
     }

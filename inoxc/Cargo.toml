@@ -6,4 +6,3 @@ edition = "2018"
 
 [dependencies]
 syntax = { path = "../syntax" }
-bumpalo = "2.2"

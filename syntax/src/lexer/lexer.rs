@@ -325,12 +325,15 @@ impl<'inp> Lexer<'inp> {
 
                 false
             }
+            // We received a closing delimiter that closes the last delimiter.
+            // Nothing to do, just emit the token.
             Some(open) if delim.closes(open) => true,
-            // We received a closing delimiter that doesn't closed the last delimiter.
+            // We received a closing delimiter that doesn't close the last delimiter.
             // Try to fix the delimiter stack.
             Some(open) => {
-                // TODO(luisholanda): We should put the probably opening delimiter
-                //  that match the closing one, as rustc does.
+                // TODO(luisholanda): We should search the probably opening delimiter
+                //  that match the closing one, as rustc does, instead of just telling
+                //  what is expected.
                 let expected = open.opposed().to_string();
                 let found = delim.to_string();
                 let error = LexerError::UnmatchedDelimiter {
@@ -760,16 +763,17 @@ mod test {
     #[test]
     fn full_test() {
         test! {
-            "let x = avalue.method();",
-            "~~~                     " => Token::Let,
-            "    ~                   " => Token::Identifier("x".to_owned()),
-            "      ~                 " => Token::Equals,
-            "        ~~~~~~          " => Token::Identifier("avalue".to_owned()),
-            "              ~         " => Token::Dot,
-            "               ~~~~~~   " => Token::Identifier("method".to_owned()),
-            "                     ~  " => Token::Delim(Delimiter::LParen),
-            "                      ~ " => Token::Delim(Delimiter::RParen),
-            "                       ~" => Token::SemiColon,
+            "let mut x = avalue.method();",
+            "~~~                         " => Token::Let,
+            "    ~~~                     " => Token::Mut,
+            "        ~                   " => Token::Identifier("x".to_owned()),
+            "          ~                 " => Token::Equals,
+            "            ~~~~~~          " => Token::Identifier("avalue".to_owned()),
+            "                  ~         " => Token::Dot,
+            "                   ~~~~~~   " => Token::Identifier("method".to_owned()),
+            "                         ~  " => Token::Delim(Delimiter::LParen),
+            "                          ~ " => Token::Delim(Delimiter::RParen),
+            "                           ~" => Token::SemiColon,
         }
     }
 }

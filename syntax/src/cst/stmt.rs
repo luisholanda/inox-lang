@@ -14,6 +14,7 @@ pub enum Stmt<N> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Let<N> {
     pub ident: N,
+    pub mutable: bool,
     pub typ: Option<Type<N>>,
     pub value: Option<Expr<N>>,
 }

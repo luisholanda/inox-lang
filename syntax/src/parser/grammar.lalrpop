@@ -235,9 +235,10 @@ assign_stmt: Stmt<String> = {
 
 #[inline]
 let_stmt: Stmt<String> = {
-    "let" <ident:identifier> <typ:(":" <type_>)?> <value:("=" <expr>)?> ";" => {
+    "let" <m:"mut"?> <ident:identifier> <typ:(":" <type_>)?> <value:("=" <expr>)?> ";" => {
         Stmt::Let(Let{
             ident,
+            mutable: m.is_some(),
             typ,
             value
         })
@@ -310,7 +311,7 @@ if_expr: SynExpr = {
 
 #[inline]
 if_: IfExpr<String> = {
-    "if" <cond:or> <expr:block> <else_expr:( "else" <block> )?> => {
+    "if" <cond:or> <expr:block> <else_expr:( "else" <either<block, if_expr>> )?> => {
         IfExpr::If{
             cond: box cond,
             expr: box expr,
@@ -321,7 +322,7 @@ if_: IfExpr<String> = {
 
 #[inline]
 if_let: IfExpr<String> = {
-    "if" "let" <name: identifier> "=" <value:or> <expr:block> <else_expr: ("else" <block>)?> => {
+    "if" "let" <name: identifier> "=" <value:or> <expr:block> <else_expr: ("else" <either<block, if_expr>>)?> => {
         IfExpr::IfLet{
             assign: box value,
             to: name,
@@ -333,7 +334,7 @@ if_let: IfExpr<String> = {
 
 #[inline]
 unless: SynExpr = {
-    "unless" <cond: or> <expr: block> <else_expr: ("else" <block>)?> => {
+    "unless" <cond: or> <expr: block> <else_expr: ("else" <either<block, if_expr>>)?> => {
         Expr::Unless(IfExpr::If{
             cond: box cond,
             expr: box expr,
@@ -371,6 +372,19 @@ logic<op, next>: SynExpr = {
     next
 };
 
+logic_single<op, next>: SynExpr = {
+    <lhs: next> <op: op> <rhs: next> => {
+        let lhs = box lhs;
+        let rhs = box rhs;
+
+        if let Token::Logic(op) = op {
+            Expr::Logic(Logic::Oper(Oper{lhs, op, rhs}))
+        } else {
+            unreachable!("Only Token::Logic should reach this macro.");
+        }
+    },
+    next
+};
 
 or  = logic<"or", and>;
 and = logic<"and", not>;
@@ -381,7 +395,7 @@ not: SynExpr = {
 };
 
 desigualities = either<either<"<", ">">, either<"<=", ">=">>;
-comparisons = logic<either<either<"==", "!=">, desigualities>, plus>;
+comparisons = logic_single<either<either<"==", "!=">, desigualities>, plus>;
 
 plus  = arith<either<"plus", "minus">, mult>;
 mult  = arith<either<"mult", "div">, shift>;

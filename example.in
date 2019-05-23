@@ -1,21 +1,44 @@
+/// Concat all the elements in a vector based on the
+/// monoidal implementation.
 concat: forall a' with Monoid[a'] . vec[a'] -> a'
 concat(as) = {
-  let result = default();
+  let mut result = default();
 
   for a in as {
-    print(a);
     result = result + sum(a);
   }
 
   result
 }
 
+/// Concat all the kes and values in a map into
+/// a pair, based on the monoidal implementations.
+map_concat: forall k' v'
+              with (Monoid[k'], Monoid[v'])
+                 . map[k', v'] ->  pair[k', v']
+map_concat(kvs) = {
+  let key = concat(kvs.keys);
+  let val = concat(kvs.values);
+
+  pair(key, val)
+}
 
 main: -> ()
 main = {
-  let test = [1, 2, 3];
+  let vec_test = [1, 2, 3];
 
-  let result = concat(test);
+  let result = concat(vec_test);
 
   assert_eq(result, 6);
+
+  let map_test = [
+    "a" => 1,
+    "b" => 2,
+    "c" => 3
+  ];
+
+  let result = map_concat(map_test);
+
+  assert_eq(result.fst, "abc");
+  assert_eq(result.snd, 6);
 }
