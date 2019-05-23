@@ -1,5 +1,5 @@
 use std::boxed::Box;
-use symbol::pos::Location;
+use symbol::pos::{Location, spanned2, spanned};
 
 use crate::lexer::token::{Token, Delimiter};
 use crate::cst::*;
@@ -116,6 +116,10 @@ many<e>: Vec<e> = {
      => vec![],
 };
 
+located<e>: Located<e> = {
+    <l: @L> <e: e> <r: @R> => spanned2(l, r, e),
+};
+
 //
 // Modules
 //
@@ -128,9 +132,11 @@ pub module: Module<String> = {
 // Top-level definitions
 //
 
-pub def: Def<String> = {
-    func => Def::Func(<>),
-    sign => Def::Sign(<>),
+pub def = located<defNode>;
+
+defNode: DefNode<String> = {
+    func => DefNode::Func(<>),
+    sign => DefNode::Sign(<>),
 };
 
 func: Func<String> = {
@@ -158,127 +164,130 @@ sign: Sign<String> = {
 // Types
 //
 
-pub type_: Type<String> = { forall, unconstraint };
+pub type_: Type<String> = { located<forall>, located<unconstraint> };
 
-forall: Type<String> = {
-    "forall" <vars: many<type_var>> <c:constraints?> "." <base: unconstraint> => {
-        Type::Forall(Forall{
+forall: TypeNode<String> = {
+    located<forall_node> => TypeNode::Forall(<>)
+};
+
+forall_node: ForallNode<String> = {
+    "forall" <vars: many<type_var>> <c:constraints?> "." <base: located<unconstraint>> => {
+        ForallNode{
             vars,
             base: box base,
             constraint: c
-        })
+        }
     },
 };
 
 constraints: Constraint<String> = {
-    "with" <c:constraint> => c,
+    "with" <c:located<constraint>> => c,
 };
 
-constraint: Constraint<String> = {
+constraint: ConstraintNode<String> = {
     single_constraint,
-    "(" <comma<single_constraint>> ")" => Constraint::Parens(<>),
+    "(" <comma<located<single_constraint>>> ")" => ConstraintNode::Parens(<>),
 };
 
-single_constraint: Constraint<String> = {
-    <identifier> "[" <comma<base_type>> "]" => Constraint::Constraint(<>),
+single_constraint: ConstraintNode<String> = {
+    <identifier> "[" <comma<located<base_type>>> "]" => ConstraintNode::Constraint(<>),
 };
 
 unconstraint = either<base_type, method>;
 
-base_type: Type<String> = {
+base_type: TypeNode<String> = {
     arrow,
     type_term,
-    "->" <r:base_type> => Type::Arrow(None, box <>),
+    "->" <r:located<base_type>> => TypeNode::Arrow(None, box <>),
 };
 
-arrow: Type<String> = {
-    <p:type_term> "->" <r: base_type> => Type::Arrow(Some(box p), box r),
+arrow: TypeNode<String> = {
+    <p:located<type_term>> "->" <r: located<base_type>> => TypeNode::Arrow(Some(box p), box r),
 };
 
-method: Type<String> = {
-    <r:type_term> "~>" <ret:either<arrow, type_term>> => Type::Method(box Type::Arrow(Some(box r), box ret)),
+method: TypeNode<String> = {
+    <l:@R> <rec:located<type_term>> "~>" <ret:located<either<arrow, type_term>>> <r:@R> =>
+        TypeNode::Method(box spanned2(l, r, TypeNode::Arrow(Some(box rec), box ret))),
 };
 
-type_term: Type<String> = {
-    identifier => Type::Term(<>),
-    type_var => Type::Var(<>),
-    <typ: type_term> "[" <args: comma<base_type>> "]" => Type::App(box typ, args),
-    "(" ")" => Type::Term("unit".to_owned()),
-    "(" <unconstraint> ")" => Type::Parens(box <>)
+type_term: TypeNode<String> = {
+    identifier => TypeNode::Term(<>),
+    type_var => TypeNode::Var(<>),
+    <typ: located<type_term>> "[" <args: comma<located<base_type>>> "]" => TypeNode::App(box typ, args),
+    <l:@L> "(" ")" <r:@R> => TypeNode::Term(spanned2(l, r, "unit".to_owned())),
+    "(" <located<unconstraint>> ")" => TypeNode::Parens(box <>)
 };
 
-type_var: String = {
-    tyvar => <>
-};
+type_var: Located<String> = { located<tyvar> };
 
 //
 // Statements
 //
 
 pub stmt: Stmt<String> = {
-    assign_stmt,
-    while_stmt,
-    for_stmt,
-    let_stmt,
-    expr_stmt,
+    located<assign_stmt>,
+    located<while_stmt>,
+    located<for_stmt>,
+    located<let_stmt>,
+    located<expr_stmt>,
 };
 
 #[inline]
-assign_stmt: Stmt<String> = {
-    <to:identifier> "=" <expr:expr> ";" => {
-        Stmt::Assign(Assign{
+assign_stmt: StmtNode<String> = {
+    <l:@L> <to:identifier> "=" <expr:expr> ";" <r:@R> => {
+        StmtNode::Assign(spanned2(l, r, AssignNode{
             to,
             expr
-        })
+        }))
     }
 };
 
 #[inline]
-let_stmt: Stmt<String> = {
-    "let" <m:"mut"?> <ident:identifier> <typ:(":" <type_>)?> <value:("=" <expr>)?> ";" => {
-        Stmt::Let(Let{
+let_stmt: StmtNode<String> = {
+    <l:@L> "let" <m:"mut"?> <ident:identifier> <typ:(":" <type_>)?> <value:("=" <expr>)?> ";" <r:@R> => {
+        StmtNode::Let(spanned2(l, r, LetNode{
             ident,
             mutable: m.is_some(),
             typ,
             value
-        })
+        }))
     },
 };
 
 #[inline]
-while_stmt: Stmt<String> = {
-    "while" <cond:expr> <expr:block> => {
-        Stmt::While(While{
+while_stmt: StmtNode<String> = {
+    <l:@L> "while" <cond:expr> <expr:block> <r:@R> => {
+        StmtNode::While(spanned2(l, r, WhileNode{
             cond,
             expr
-        })
+        }))
     },
-    "until" <cond:expr> <expr:block> => {
-        Stmt::Until(While{
+    <l:@L> "until" <cond:expr> <expr:block> <r:@R> => {
+        StmtNode::Until(spanned2(l, r, WhileNode{
             cond,
             expr,
-        })
+        }))
     }
 };
 
 #[inline]
-for_stmt: Stmt<String> = {
-    "for" <value:identifier> "in" <iter:expr> <expr:block> => {
-        Stmt::For(For{
+for_stmt: StmtNode<String> = {
+    <l:@L> "for" <value:identifier> "in" <iter:expr> <expr:block> <r:@R> => {
+        StmtNode::For(spanned2(l, r, ForNode{
             value,
             iter,
             expr
-        })
+        }))
     },
 };
 
 #[inline]
-expr_stmt: Stmt<String> = {
+expr_stmt: StmtNode<String> = {
+    block => StmtNode::Expr(<>, false),
+    if_expr => StmtNode::Expr(<>, false),
     <ex:expr> ";" => {
-        Stmt::Expr(ex, true)
+        StmtNode::Expr(ex, true)
     },
-    block => Stmt::Expr(<>, false),
-    if_expr => Stmt::Expr(<>, false)
 };
 
 
@@ -292,27 +301,32 @@ pub expr: SynExpr = {
     block,
 };
 
-block: SynExpr = {
+block: Expr<String> = {
+    located<block_node> => spanned(<>.span, ExprNode::Block(<>.into_inner()))
+};
+
+#[inline]
+block_node: Vec<Stmt<String>> = {
     "{" <stmts: many<stmt>> <ex: or?> "}" => {
         let mut stmts = stmts;
 
         if let Some(ex) = ex {
-            stmts.push(Stmt::Expr(ex, false));
+            stmts.push(spanned(ex.span, StmtNode::Expr(ex, false)));
         }
 
-        Expr::Block(stmts)
+        stmts
     },
 };
 
-if_expr: SynExpr = {
-    if_ => Expr::If(<>),
-    unless,
+if_expr: Expr<String> = {
+    located<if_> => spanned(<>.span, ExprNode::If(<>)),
+    located<unless>,
 };
 
 #[inline]
-if_: IfExpr<String> = {
+if_: IfNode<String> = {
     "if" <cond:or> <expr:block> <else_expr:( "else" <either<block, if_expr>> )?> => {
-        IfExpr::If{
+        IfNode::If{
             cond: box cond,
             expr: box expr,
             else_expr: else_expr.map(|ex| box ex)
@@ -321,9 +335,9 @@ if_: IfExpr<String> = {
 };
 
 #[inline]
-if_let: IfExpr<String> = {
+if_let: IfNode<String> = {
     "if" "let" <name: identifier> "=" <value:or> <expr:block> <else_expr: ("else" <either<block, if_expr>>)?> => {
-        IfExpr::IfLet{
+        IfNode::IfLet{
             assign: box value,
             to: name,
             expr: box expr,
@@ -332,25 +346,29 @@ if_let: IfExpr<String> = {
     }
 };
 
+
+unless: ExprNode<String> = { located<unless_node> => ExprNode::Unless(<>) };
+
 #[inline]
-unless: SynExpr = {
+unless_node: IfNode<String> = {
     "unless" <cond: or> <expr: block> <else_expr: ("else" <either<block, if_expr>>)?> => {
-        Expr::Unless(IfExpr::If{
+        IfNode::If{
             cond: box cond,
             expr: box expr,
             else_expr: else_expr.map(|ex| box ex)
-        })
+        }
     }
 };
 
 arith<op, next>: SynExpr = {
-    <lhs: arith<op, next>> <op:op> <rhs:next> => {
+    <l:@L> <lhs: arith<op, next>> <op:op> <rhs:next> <r:@R> => {
         let lhs = box lhs;
         let rhs = box rhs;
 
 
         if let Token::Arith(op) = op {
-            Expr::Arith(Oper{lhs, op, rhs})
+            let oper = spanned2(l, r, OperNode{lhs, op, rhs});
+            spanned2(l, r, ExprNode::Arith(oper))
         } else {
             unreachable!("Only Token::Logic should reach this macro.");
         }
@@ -359,12 +377,14 @@ arith<op, next>: SynExpr = {
 };
 
 logic<op, next>: SynExpr = {
-    <lhs: logic<op, next>> <op: op> <rhs: next> => {
+    <l:@L> <lhs: logic<op, next>> <op: op> <rhs: next> <r:@R> => {
         let lhs = box lhs;
         let rhs = box rhs;
 
         if let Token::Logic(op) = op {
-            Expr::Logic(Logic::Oper(Oper{lhs, op, rhs}))
+            let oper = spanned2(l, r, OperNode{lhs, op, rhs});
+            let logic = spanned2(l, r, LogicNode::Oper(oper));
+            spanned2(l, r, ExprNode::Logic(logic))
         } else {
             unreachable!("Only Token::Logic should reach this macro.");
         }
@@ -373,12 +393,14 @@ logic<op, next>: SynExpr = {
 };
 
 logic_single<op, next>: SynExpr = {
-    <lhs: next> <op: op> <rhs: next> => {
+    <l:@L> <lhs: next> <op: op> <rhs: next> <r:@R> => {
         let lhs = box lhs;
         let rhs = box rhs;
 
         if let Token::Logic(op) = op {
-            Expr::Logic(Logic::Oper(Oper{lhs, op, rhs}))
+            let oper = spanned2(l, r, OperNode{lhs, op, rhs});
+            let logic = spanned2(l, r, LogicNode::Oper(oper));
+            spanned2(l, r, ExprNode::Logic(logic))
         } else {
             unreachable!("Only Token::Logic should reach this macro.");
         }
@@ -390,7 +412,11 @@ or  = logic<"or", and>;
 and = logic<"and", not>;
 
 not: SynExpr = {
-    <n:"not"> <l:comparisons> => Expr::Logic(Logic::Not(box l)),
+    <l:@L> <n:"not"> <c:comparisons> <r:@R> => {
+        let not = spanned2(l, r, LogicNode::Not(box c));
+
+        spanned2(l, r, ExprNode::Logic(not))
+    },
     comparisons
 };
 
@@ -402,48 +428,48 @@ mult  = arith<either<"mult", "div">, shift>;
 shift = arith<either<"lshift", "rshift">, pow>;
 pow   = arith<either<"pow", "mod">, question>;
 
-question: SynExpr = {
-    <f: factor> "?" => Expr::Question(box f),
+question: Expr<String> = {
+    <l:@L> <f: factor> "?" <r:@R> => spanned2(l, r, ExprNode::Question(box f)),
     factor
 };
 
-factor: SynExpr = {
-    <f:factor> "(" <args:comma<expr>?> ")" => {
+factor = located<factor_node>;
+factor_node: ExprNode<String> = {
+    <l:@L> <f:factor> "(" <args:comma<expr>?> ")" <r:@R> => {
         let func = box f;
 
-        Expr::Call(Call{func, args: args.unwrap_or_else(Vec::new)})
+        ExprNode::Call(spanned2(l, r, CallNode{func, args: args.unwrap_or_else(Vec::new)}))
     },
-    term => Expr::Term(<>),
-    "(" <expr> ")" => Expr::Parens(box <>)
+    term => ExprNode::Term(<>),
+    "(" <expr> ")" => ExprNode::Parens(box <>)
 };
 
-term: Term<String> = {
-    identifier => Term::Var(<>),
-    literal => Term::Lit(<>),
+term = located<term_node>;
+term_node: TermNode<String> = {
+    identifier => TermNode::Var(<>),
+    located<literal> => TermNode::Lit(<>),
     <owner:factor> "." <field:identifier> => {
         let owner = box owner;
-        Term::Field{owner, field}
+        TermNode::Field{owner, field}
     },
     <owner:factor> "[" <index:expr> "]" => {
         let owner = box owner;
         let index = box index;
-        Term::Index{owner, index}
+        TermNode::Index{owner, index}
     },
 };
 
-literal: Literal<String> = {
-    charl   => Literal::Char(<>),
-    intl    => Literal::Integer(<>),
-    fltl    => Literal::Float(<>),
-    natl    => Literal::Natural(<>),
-    stringl => Literal::String(<>),
-    "[" <items:comma<(<expr> "=>" <expr>)>> "]" => Literal::Map(<>),
+literal: LitNode<String> = {
+    charl   => LitNode::Char(<>),
+    intl    => LitNode::Integer(<>),
+    fltl    => LitNode::Float(<>),
+    natl    => LitNode::Natural(<>),
+    stringl => LitNode::String(<>),
+    "[" <items:comma<(<expr> "=>" <expr>)>> "]" => LitNode::Map(<>),
     "[" <items:comma<expr>?> "]" => {
-        Literal::Vec(<>.unwrap_or_else(Vec::new))
+        LitNode::Vec(<>.unwrap_or_else(Vec::new))
     },
 };
 
-identifier: String = {
-    ident => <>
-};
+identifier: Located<String> = located<ident>;
 

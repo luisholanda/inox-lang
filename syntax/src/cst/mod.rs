@@ -1,3 +1,5 @@
+pub use symbol::pos::Located;
+
 mod expr;
 mod stmt;
 mod typ;
@@ -18,9 +20,11 @@ pub struct Module<N> {
     pub definitions: Vec<Def<N>>,
 }
 
+pub type Def<N> = Located<DefNode<N>>;
+
 /// Top-level definitions.
 #[derive(Debug, Clone, PartialEq)]
-pub enum Def<N> {
+pub enum DefNode<N> {
     Func(Func<N>),
     Sign(Sign<N>),
 }
@@ -29,9 +33,9 @@ pub enum Def<N> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Func<N> {
     /// The name of the function.
-    pub name: N,
+    pub name: Located<N>,
     /// The name of the arguments.
-    pub args: Vec<N>,
+    pub args: Vec<Located<N>>,
     /// The body of the function.
     pub body: Expr<N>,
 }
@@ -40,7 +44,7 @@ pub struct Func<N> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sign<N> {
     /// The symbol linked to the signature.
-    pub name: N,
+    pub name: Located<N>,
     /// The type of the symbol referenced by `name`.
     pub type_: Type<N>,
     /// The optional documentation of the signature.

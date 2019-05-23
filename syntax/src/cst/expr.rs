@@ -1,12 +1,15 @@
 use std::boxed::Box;
 use std::fmt;
+use symbol::pos::Located;
 
 use crate::cst::stmt::*;
 
 pub type ExprRef<N> = Box<Expr<N>>;
 
+pub type Expr<N> = Located<ExprNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Expr<N> {
+pub enum ExprNode<N> {
     Term(Term<N>),
     Parens(ExprRef<N>),
     Block(Vec<Stmt<N>>),
@@ -19,19 +22,23 @@ pub enum Expr<N> {
     Call(Call<N>),
 }
 
+pub type Call<N> = Located<CallNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct Call<N> {
+pub struct CallNode<N> {
     pub func: ExprRef<N>,
     pub args: Vec<Expr<N>>,
 }
 
+pub type Term<N> = Located<TermNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term<N> {
-    Var(N),
+pub enum TermNode<N> {
+    Var(Located<N>),
     Lit(Literal<N>),
     Field {
         owner: ExprRef<N>,
-        field: N,
+        field: Located<N>,
     },
     Index {
         owner: ExprRef<N>,
@@ -39,8 +46,11 @@ pub enum Term<N> {
     },
 }
 
+
+pub type Literal<N> = Located<LitNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Literal<N> {
+pub enum LitNode<N> {
     String(String),
     Integer(i32),
     Natural(u32),
@@ -50,8 +60,10 @@ pub enum Literal<N> {
     Map(Vec<(Expr<N>, Expr<N>)>),
 }
 
+pub type IfExpr<N> = Located<IfNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum IfExpr<N> {
+pub enum IfNode<N> {
     If {
         cond: ExprRef<N>,
         expr: ExprRef<N>,
@@ -59,26 +71,32 @@ pub enum IfExpr<N> {
     },
     IfLet {
         assign: ExprRef<N>,
-        to: N,
+        to: Located<N>,
         expr: ExprRef<N>,
         else_expr: Option<ExprRef<N>>,
     },
 }
 
+pub type MatchExpr<N> = Located<MatchNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct MatchExpr<N> {
+pub struct MatchNode<N> {
     pub expr: ExprRef<N>,
     pub branches: Vec<MatchBranch<N>>,
 }
 
+pub type MatchBranch<N> = Located<BranchNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct MatchBranch<N> {
+pub struct BranchNode<N> {
     pub case: MatchCase<N>,
     pub expr: ExprRef<N>,
 }
 
+pub type MatchCase<N> = Located<CaseNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum MatchCase<N> {
+pub enum CaseNode<N> {
     Term(N),
     OneOf(Vec<MatchCase<N>>),
     If {
@@ -87,14 +105,18 @@ pub enum MatchCase<N> {
     },
 }
 
+pub type Logic<N> = Located<LogicNode<N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Logic<N> {
+pub enum LogicNode<N> {
     Not(ExprRef<N>),
     Oper(Oper<LogicOp, N>),
 }
 
+pub type Oper<Op, N> = Located<OperNode<Op, N>>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct Oper<Op, N> {
+pub struct OperNode<Op, N> {
     pub op: Op,
     pub lhs: ExprRef<N>,
     pub rhs: ExprRef<N>,

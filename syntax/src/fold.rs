@@ -499,14 +499,14 @@ pub fn fold_constraint<F, A, B>(visitor: &mut F, constr: &Constraint<A>) -> Cons
 where
     F: Folder<A, B>,
 {
-    match constr {
-        Constraint::Parens(constrs) => {
-            Constraint::Parens(constrs.iter().map(|c| visitor.fold_constraint(c)).collect())
+    match constr.as_ref() {
+        ConstraintNode::Parens(constrs) => {
+            ConstraintNode::Parens(constrs.iter().map(|c| visitor.fold_constraint(c)).collect())
         }
-        Constraint::Constraint(name, args) => {
+        ConstraintNode::Constraint(name, args) => {
             let folded_args = args.iter().map(|a| visitor.fold_type(a)).collect();
 
-            Constraint::Constraint(visitor.fold_type_name(name), folded_args)
+            ConstraintNode::Constraint(visitor.fold_type_name(name), folded_args)
         }
     }
 }

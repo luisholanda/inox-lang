@@ -99,9 +99,9 @@ where
     let mut funcs = Vec::with_capacity(module.definitions.len());
 
     for def in &module.definitions {
-        match def {
-            Def::Func(ref func) => funcs.push(func),
-            Def::Sign(ref sign) => visitor.visit_sign(sign),
+        match def.as_ref() {
+            DefNode::Func(ref func) => funcs.push(func),
+            DefNode::Sign(ref sign) => visitor.visit_sign(sign),
         }
     }
 
@@ -120,8 +120,8 @@ where
         visitor.visit_name(arg);
     }
 
-    match func.body {
-        Expr::Block(ref block) => visitor.visit_block(block),
+    match func.body.as_ref() {
+        ExprNode::Block(ref block) => visitor.visit_block(block),
         _ => unreachable!("Only block expressions should form the body of a function."),
     }
 }
@@ -138,13 +138,13 @@ pub fn visit_stmt<'c, V, N>(visitor: &mut V, stmt: &'c Stmt<N>)
 where
     V: Visitor<'c>,
 {
-    match stmt {
-        Stmt::Expr(expr, _) => visitor.visit_expr(expr),
-        Stmt::Let(let_) => visitor.visit_let(let_),
-        Stmt::While(while_) => visitor.visit_while(while_),
-        Stmt::Until(until_) => visitor.visit_until(until_),
-        Stmt::For(for_) => visitor.visit_for(for_),
-        Stmt::Assign(assign) => visitor.visit_assign(assign),
+    match stmt.as_ref() {
+        StmtNode::Expr(expr, _) => visitor.visit_expr(expr),
+        StmtNode::Let(let_) => visitor.visit_let(let_),
+        StmtNode::While(while_) => visitor.visit_while(while_),
+        StmtNode::Until(until_) => visitor.visit_until(until_),
+        StmtNode::For(for_) => visitor.visit_for(for_),
+        StmtNode::Assign(assign) => visitor.visit_assign(assign),
     }
 }
 
@@ -169,8 +169,8 @@ where
 {
     visitor.visit_expr(&while_.cond);
 
-    match &while_.expr {
-        Expr::Block(block) => visitor.visit_block(block),
+    match &while_.expr.as_ref() {
+        ExprNode::Block(block) => visitor.visit_block(block),
         _ => unreachable!("Only block expressions are allowed in while statements"),
     }
 }
@@ -189,8 +189,8 @@ where
     visitor.visit_expr(&for_.iter);
     visitor.visit_name(&for_.value);
 
-    match &for_.expr {
-        Expr::Block(block) => visitor.visit_block(block),
+    match &for_.expr.as_ref() {
+        ExprNode::Block(block) => visitor.visit_block(block),
         _ => unreachable!("Only block expressions are allowed in for statements"),
     }
 }
@@ -207,17 +207,17 @@ pub fn visit_expr<'c, V, N>(visitor: &mut V, expr: &'c Expr<N>)
 where
     V: Visitor<'c>,
 {
-    match expr {
-        Expr::Term(term) => visitor.visit_term(term),
-        Expr::Parens(expr) => visitor.visit_expr(expr),
-        Expr::Block(block) => visitor.visit_block(block),
-        Expr::If(if_) => visitor.visit_if(if_),
-        Expr::Unless(unless) => visitor.visit_unless(unless),
-        Expr::Match(match_) => visitor.visit_match(match_),
-        Expr::Arith(arith) => visitor.visit_arith(arith),
-        Expr::Logic(logic) => visitor.visit_logic(logic),
-        Expr::Question(quest) => visitor.visit_question(quest),
-        Expr::Call(call) => visitor.visit_call(call),
+    match expr.as_ref() {
+        ExprNode::Term(term) => visitor.visit_term(term),
+        ExprNode::Parens(expr) => visitor.visit_expr(expr),
+        ExprNode::Block(block) => visitor.visit_block(block),
+        ExprNode::If(if_) => visitor.visit_if(if_),
+        ExprNode::Unless(unless) => visitor.visit_unless(unless),
+        ExprNode::Match(match_) => visitor.visit_match(match_),
+        ExprNode::Arith(arith) => visitor.visit_arith(arith),
+        ExprNode::Logic(logic) => visitor.visit_logic(logic),
+        ExprNode::Question(quest) => visitor.visit_question(quest),
+        ExprNode::Call(call) => visitor.visit_call(call),
     }
 }
 
@@ -225,14 +225,14 @@ pub fn visit_term<'c, V, N>(visitor: &mut V, term: &'c Term<N>)
 where
     V: Visitor<'c>,
 {
-    match term {
-        Term::Var(name) => visitor.visit_name(name),
-        Term::Lit(_) => (),
-        Term::Field { owner, field } => {
+    match term.as_ref() {
+        TermNode::Var(name) => visitor.visit_name(name),
+        TermNode::Lit(_) => (),
+        TermNode::Field { owner, field } => {
             visitor.visit_expr(owner);
             visitor.visit_name(field);
         }
-        Term::Index { owner, index } => {
+        TermNode::Index { owner, index } => {
             visitor.visit_expr(owner);
             visitor.visit_expr(index);
         }
@@ -252,8 +252,8 @@ pub fn visit_if<'c, V, N>(visitor: &mut V, if_: &'c IfExpr<N>)
 where
     V: Visitor<'c>,
 {
-    match if_ {
-        IfExpr::If {
+    match if_.as_ref() {
+        IfNode::If {
             cond,
             expr,
             else_expr,
@@ -265,7 +265,7 @@ where
                 visitor.visit_expr(else_);
             }
         }
-        IfExpr::IfLet {
+        IfNode::IfLet {
             assign,
             to,
             expr,
@@ -312,14 +312,14 @@ pub fn visit_match_case<'c, V, N>(visitor: &mut V, case: &'c MatchCase<N>)
 where
     V: Visitor<'c>,
 {
-    match case {
-        MatchCase::Term(term) => visitor.visit_name(term),
-        MatchCase::OneOf(cases) => {
+    match case.as_ref() {
+        CaseNode::Term(term) => visitor.visit_name(term),
+        CaseNode::OneOf(cases) => {
             for case in cases {
                 visitor.visit_match_case(case);
             }
         }
-        MatchCase::If { case, cond } => {
+        CaseNode::If { case, cond } => {
             visitor.visit_expr(cond);
             visitor.visit_match_case(case);
         }
@@ -338,9 +338,9 @@ pub fn visit_logic<'c, V, N>(visitor: &mut V, logic: &'c Logic<N>)
 where
     V: Visitor<'c>,
 {
-    match logic {
-        Logic::Not(expr) => visitor.visit_expr(expr),
-        Logic::Oper(oper) => {
+    match logic.as_ref() {
+        LogicNode::Not(expr) => visitor.visit_expr(expr),
+        LogicNode::Oper(oper) => {
             visitor.visit_expr(&oper.lhs);
             visitor.visit_expr(&oper.rhs);
         }
@@ -369,13 +369,13 @@ pub fn visit_lit<'c, V, N>(visitor: &mut V, lit: &'c Literal<N>)
 where
     V: Visitor<'c>,
 {
-    match lit {
-        Literal::Vec(vec) => {
+    match lit.as_ref() {
+        LitNode::Vec(vec) => {
             for expr in vec {
                 visitor.visit_expr(expr);
             }
         }
-        Literal::Map(map) => {
+        LitNode::Map(map) => {
             for (key, value) in map {
                 visitor.visit_expr(value);
                 visitor.visit_expr(key);
@@ -389,26 +389,26 @@ pub fn visit_type<'c, V, N>(visitor: &mut V, typ: &'c Type<N>)
 where
     V: Visitor<'c>,
 {
-    match typ {
-        Type::Term(term) => visitor.visit_type_name(term),
-        Type::Var(var) => visitor.visit_type_var(var),
-        Type::App(base, args) => {
+    match typ.as_ref() {
+        TypeNode::Term(term) => visitor.visit_type_name(term),
+        TypeNode::Var(var) => visitor.visit_type_var(var),
+        TypeNode::App(base, args) => {
             visitor.visit_type(base);
 
             for arg in args {
                 visitor.visit_type(arg);
             }
         }
-        Type::Arrow(arg, ret) => {
+        TypeNode::Arrow(arg, ret) => {
             if let Some(ty) = arg {
                 visitor.visit_type(ty);
             }
 
             visitor.visit_type(ret);
         }
-        Type::Method(ret) => visitor.visit_type(ret),
-        Type::Parens(typ) => visitor.visit_type(typ),
-        Type::Forall(forall) => visitor.visit_forall(forall),
+        TypeNode::Method(ret) => visitor.visit_type(ret),
+        TypeNode::Parens(typ) => visitor.visit_type(typ),
+        TypeNode::Forall(forall) => visitor.visit_forall(forall),
     }
 }
 
@@ -431,15 +431,15 @@ pub fn visit_constraint<'c, V, N>(visitor: &mut V, constr: &'c Constraint<N>)
 where
     V: Visitor<'c>,
 {
-    match constr {
-        Constraint::Constraint(name, args) => {
+    match constr.as_ref() {
+        ConstraintNode::Constraint(name, args) => {
             visitor.visit_type_name(name);
 
             for arg in args {
                 visitor.visit_type(arg);
             }
         }
-        Constraint::Parens(constrs) => {
+        ConstraintNode::Parens(constrs) => {
             for constr in constrs {
                 visitor.visit_constraint(constr);
             }

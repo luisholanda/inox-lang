@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 pub use codespan::{
     ByteIndex as BytePos, ByteOffset, ColumnIndex as Column, ColumnOffset, LineIndex as Line,
@@ -70,6 +71,20 @@ impl<T, Pos: Copy> Spanned<T, Pos> {
 impl<T, Pos: Copy> AsRef<T> for Spanned<T, Pos> {
     fn as_ref(&self) -> &T {
         &self.value
+    }
+}
+
+impl<T, Pos: Copy> Deref for Spanned<T, Pos> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<T, Pos: Copy> DerefMut for Spanned<T, Pos> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.value
     }
 }
 
