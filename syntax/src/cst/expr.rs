@@ -26,7 +26,7 @@ pub type Call<N> = Located<CallNode<N>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallNode<N> {
-    pub func: ExprRef<N>,
+    pub func: Located<N>,
     pub args: Vec<Expr<N>>,
 }
 
@@ -46,14 +46,13 @@ pub enum TermNode<N> {
     },
 }
 
-
 pub type Literal<N> = Located<LitNode<N>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LitNode<N> {
     String(String),
+    Bool(bool),
     Integer(i32),
-    Natural(u32),
     Float(f32),
     Char(char),
     Vec(Vec<Expr<N>>),
@@ -164,6 +163,17 @@ pub enum LogicOp {
     Not,
     And,
     Or,
+}
+
+impl LogicOp {
+    pub fn is_comparison(self) -> bool {
+        self == LogicOp::GreaterEquals
+            || self == LogicOp::GreaterThan
+            || self == LogicOp::LessEquals
+            || self == LogicOp::LessThan
+            || self == LogicOp::DoubleEquals
+            || self == LogicOp::NotEquals
+    }
 }
 
 impl fmt::Display for LogicOp {

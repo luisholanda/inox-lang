@@ -1,12 +1,12 @@
 [package]
-name = "inoxc"
+name = "frontend"
 version = "0.1.0"
 authors = ["Luis Holanda <luiscmholanda@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-codespan = "0.2"
-codespan-reporting = "0.2"
+proc-macro2 = "0.4"
+quote = "0.6"
+syn = "0.14"
 symbol = { path = "../symbol" }
 syntax = { path = "../syntax" }
-frontend = { path = "../frontend" }

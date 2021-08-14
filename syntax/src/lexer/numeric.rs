@@ -9,14 +9,8 @@ pub(crate) fn non_float_literal(text: &str, radix: u32) -> PlexToken {
         Err(err) => match err.kind() {
             IntErrorKind::Underflow =>
                 PlexToken::numerical_error(PlexLexerError::IntegerLiteralUnderflow{value: text.to_owned()}),
-            IntErrorKind::Overflow => match u32::from_str_radix(text, radix) {
-                Ok(nat) => PlexToken::LexToken(Token::NatLiteral(nat)),
-                Err(err) => match err.kind() {
-                    IntErrorKind::Overflow =>
-                        PlexToken::numerical_error(PlexLexerError::NaturalLiteralOverflow{value: text.to_owned()}),
-                    _ => unreachable!("No empty string, non number literal or negative literal should reach this.")
-                }
-            },
+            IntErrorKind::Overflow =>
+                PlexToken::numerical_error(PlexLexerError::NaturalLiteralOverflow{value: text.to_owned()}),
             err => unreachable!("No empty string or non number literal should reach this function: {:#?}", err)
         }
     }

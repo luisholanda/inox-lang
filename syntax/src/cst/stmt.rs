@@ -46,6 +46,6 @@ pub type Assign<N> = Located<AssignNode<N>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssignNode<N> {
-    pub to: Located<N>,
+    pub to: Term<N>,
     pub expr: Expr<N>,
 }

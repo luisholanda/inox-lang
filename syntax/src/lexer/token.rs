@@ -85,9 +85,9 @@ pub enum Token {
 
     // Literals
     StringLiteral(String),
+    BoolLiteral(bool),
     CharLiteral(char),
     IntLiteral(i32),
-    NatLiteral(u32),
     FloatLiteral(f32),
     SelfLit,
 
@@ -150,9 +150,9 @@ impl fmt::Display for Token {
             Delim(delim) => delim.to_string(),
             Arith(op) => op.to_string(),
             Logic(op) => op.to_string(),
+            BoolLiteral(bl) => format!("{}", bl),
             CharLiteral(chl) => format!("{}", chl),
             IntLiteral(intl) => format!("{}", intl),
-            NatLiteral(natl) => format!("{}", natl),
             FloatLiteral(fltl) => format!("{}", fltl),
             other => match other {
                 Identifier(ident) => ident.as_str(),
@@ -199,7 +199,7 @@ impl fmt::Display for Token {
                 Equals => "=",
                 Pipe => "|",
 
-                _ => unreachable!("Shouldn't reach here.")
+                _ => unreachable!("Shouldn't reach here."),
             }
             .to_string(),
         };

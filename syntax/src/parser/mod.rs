@@ -26,14 +26,10 @@ impl ParserSession {
         }
     }
 
-    pub fn parse(
-        &mut self,
-        input: &str,
-    ) -> ParserResult<Module<String>> {
+    pub fn parse(&mut self, input: &str) -> ParserResult<Module<String>> {
         let mut lex = LALRLexer::new(input);
 
-        let result =
-            grammar::parse_module(&mut self.errors, &mut lex);
+        let result = grammar::parse_module(&mut self.errors, &mut lex);
 
         self.lexer_errors = lex.errors();
 
@@ -70,10 +66,7 @@ impl ParserSession {
         )
     }
 
-    pub fn parse_stmt(
-        &mut self,
-        input: &str,
-    ) -> ParserResult<Stmt<String>> {
+    pub fn parse_stmt(&mut self, input: &str) -> ParserResult<Stmt<String>> {
         let mut lex = LALRLexer::new(input);
 
         let result = grammar::parse_stmt(&mut self.errors, &mut lex);
@@ -93,10 +86,7 @@ impl ParserSession {
         )
     }
 
-    pub fn parse_def(
-        &mut self,
-        input: &str,
-    ) -> ParserResult<Def<String>> {
+    pub fn parse_def(&mut self, input: &str) -> ParserResult<Def<String>> {
         let mut lex = LALRLexer::new(input);
 
         let result = grammar::parse_def(&mut self.errors, &mut lex);
@@ -116,10 +106,7 @@ impl ParserSession {
         )
     }
 
-    pub fn parse_type(
-        &mut self,
-        input: &str,
-    ) -> ParserResult<Type<String>> {
+    pub fn parse_type(&mut self, input: &str) -> ParserResult<Type<String>> {
         let mut lex = LALRLexer::new(input);
 
         let result = grammar::parse_type_(&mut self.errors, &mut lex);

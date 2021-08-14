@@ -12,6 +12,7 @@ plex =  "0.2"
 unicode-xid = "0.1"
 id-arena = "2.2"
 lalrpop-util = "0.14.0"
+unescape = "0.1"
 
 symbol = { path = "../symbol" }
 

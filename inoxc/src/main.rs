@@ -1,28 +1,41 @@
-use std::fs::File;
-use std::io::prelude::*;
+use codespan::CodeMap;
 
+use frontend::ast::desugar::Desugar;
+use frontend::codegen;
+use frontend::tpck::*;
+use symbol::SymGen;
 use syntax::lexer::Lexer;
 use syntax::parser::ParserSession;
 
-
 fn main() -> std::io::Result<()> {
-    let mut file = File::open("./example.in")?;
-    let mut content = String::new();
+    let mut codemap = CodeMap::new();
 
-    file.read_to_string(&mut content)?;
-
-    let lexer = Lexer::new(&content);
-
-    for tok in lexer {
-        println!("{:^10} ~ {:^10}: {:?}", tok.span.start(), tok.span.end(), tok.as_ref());
-    }
+    let file = codemap.add_filemap_from_disk("./example.in")?;
 
     let mut session = ParserSession::new();
 
-    let (modu, errors, lexer_errors) = session.parse(&content);
-    println!("{:#?}", modu);
-    println!("{:#?}", errors);
-    println!("{:#?}", lexer_errors);
+    let (modu, errors, lexer_errors) = session.parse(file.src());
+
+    if let Some(modu) = modu {
+        let gen = SymGen::new();
+        let des = Desugar::new(&gen);
+
+        match des.desugar(&modu) {
+            Ok(mut ast) => {
+                println!("{:#?}", ast);
+                let typ_errors = type_check(&mut ast);
+                println!("{:#?}", typ_errors);
+                println!("{}", codegen::emit(&ast));
+            }
+            Err(des_errors) => {
+                println!("{:#?}", des_errors);
+            }
+        }
+
+    } else {
+        println!("{:#?}", lexer_errors);
+        println!("{:#?}", errors);
+    }
 
     Ok(())
 }

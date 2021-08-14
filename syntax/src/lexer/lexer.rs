@@ -238,7 +238,39 @@ impl<'inp> Lexer<'inp> {
             ident.pop();
             Token::TypeVar(ident)
         } else {
-            Token::Identifier(ident)
+            match ident.as_str() {
+                "not" => Token::Logic(LogicOp::Not),
+                "and" => Token::Logic(LogicOp::And),
+                "or"  => Token::Logic(LogicOp::Or),
+
+                "data"   => Token::Data,
+                "type"   => Token::Type,
+                "new"    => Token::New,
+                "struct" => Token::Struct,
+                "impl"   => Token::Impl,
+                "forall" => Token::Forall,
+
+                "if"     => Token::If,
+                "else"   => Token::Else,
+                "unless" => Token::Unless,
+                "while"  => Token::While,
+                "until"  => Token::Until,
+                "for"    => Token::For,
+                "in"     => Token::In,
+                "loop"   => Token::Loop,
+                "break"  => Token::Break,
+                "continue" => Token::Continue,
+                "return" => Token::Return,
+
+                "with"  => Token::With,
+                "match" => Token::Match,
+                "let"   => Token::Let,
+                "mut"   => Token::Mut,
+                "self" => Token::SelfLit,
+                "true" => Token::BoolLiteral(true),
+                "false" => Token::BoolLiteral(false),
+                _ => Token::Identifier(ident)
+            }
         };
 
         spanned2(start.start(), end, token)
@@ -265,7 +297,7 @@ impl<'inp> Lexer<'inp> {
                     let next = self.bump_token().unwrap();
                     end = next.span.end();
 
-                    if !has_leading_space {
+                   if !has_leading_space {
                         let warn = LexerError::MissingLeadingWhitespace { start: next.span };
                         self.warnings.push(warn)
                     }
@@ -454,8 +486,9 @@ lexer! {
     r#"((-[1-9]|[1-9])[0-9]*|0)"# => (non_float_literal(text, 10), text),
     r#""[^"]*""# => {
         let trimmed = unsafe { text.get_unchecked(1..text.len()-1) };
+        let unescaped = unescape::unescape(trimmed).unwrap();
 
-        (PlexToken::LexToken(Token::StringLiteral(trimmed.to_owned())), text)
+        (PlexToken::LexToken(Token::StringLiteral(unescaped)), text)
     },
     r#"'[^']*'"# => {
         let trimmed = unsafe { text.get_unchecked(1..text.len()-1) };
@@ -474,7 +507,6 @@ lexer! {
             }
         }
     },
-    r#"self"# => (PlexToken::LexToken(Token::SelfLit), text),
 
     r#"\+"#   => (PlexToken::LexToken(Token::Arith(ArithOp::Add)), text),
     r#"-"#    => (PlexToken::LexToken(Token::Arith(ArithOp::Sub)), text),
@@ -491,33 +523,6 @@ lexer! {
     r#"<"#   => (PlexToken::LexToken(Token::Logic(LogicOp::LessThan)), text),
     r#">="#  => (PlexToken::LexToken(Token::Logic(LogicOp::GreaterEquals)), text),
     r#">"#   => (PlexToken::LexToken(Token::Logic(LogicOp::GreaterThan)), text),
-    r#"not"# => (PlexToken::LexToken(Token::Logic(LogicOp::Not)), text),
-    r#"and"# => (PlexToken::LexToken(Token::Logic(LogicOp::And)), text),
-    r#"or"#  => (PlexToken::LexToken(Token::Logic(LogicOp::Or)), text),
-
-    r#"data"#   => (PlexToken::LexToken(Token::Data), text),
-    r#"type"#   => (PlexToken::LexToken(Token::Type), text),
-    r#"new"#    => (PlexToken::LexToken(Token::New), text),
-    r#"struct"# => (PlexToken::LexToken(Token::Struct), text),
-    r#"impl"#   => (PlexToken::LexToken(Token::Impl), text),
-    r#"forall"# => (PlexToken::LexToken(Token::Forall), text),
-
-    r#"if"#     => (PlexToken::LexToken(Token::If), text),
-    r#"else"#   => (PlexToken::LexToken(Token::Else), text),
-    r#"unless"# => (PlexToken::LexToken(Token::Unless), text),
-    r#"while"#  => (PlexToken::LexToken(Token::While), text),
-    r#"until"#  => (PlexToken::LexToken(Token::Until), text),
-    r#"for"#    => (PlexToken::LexToken(Token::For), text),
-    r#"in"#     => (PlexToken::LexToken(Token::In), text),
-    r#"loop"#   => (PlexToken::LexToken(Token::Loop), text),
-    r#"break"#  => (PlexToken::LexToken(Token::Break), text),
-    r#"continue"# => (PlexToken::LexToken(Token::Continue), text),
-    r#"return"# => (PlexToken::LexToken(Token::Return), text),
-
-    r#"with"#  => (PlexToken::LexToken(Token::With), text),
-    r#"match"# => (PlexToken::LexToken(Token::Match), text),
-    r#"let"#   => (PlexToken::LexToken(Token::Let), text),
-    r#"mut"#   => (PlexToken::LexToken(Token::Mut), text),
 
     r#"::"# => (PlexToken::LexToken(Token::DoubleColon), text),
     r#":"#  => (PlexToken::LexToken(Token::Colon), text),

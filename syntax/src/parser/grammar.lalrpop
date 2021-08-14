@@ -19,9 +19,9 @@ extern {
 
         // Literals
         stringl => Token::StringLiteral(<String>),
+        booll   => Token::BoolLiteral(<bool>),
         charl   => Token::CharLiteral(<char>),
         intl    => Token::IntLiteral(<i32>),
-        natl    => Token::NatLiteral(<u32>),
         fltl    => Token::FloatLiteral(<f32>),
         "self"  => Token::SelfLit,
 
@@ -234,7 +234,7 @@ pub stmt: Stmt<String> = {
 
 #[inline]
 assign_stmt: StmtNode<String> = {
-    <l:@L> <to:identifier> "=" <expr:expr> ";" <r:@R> => {
+    <l:@L> <to:located<named>> "=" <expr:expr> ";" <r:@R> => {
         StmtNode::Assign(spanned2(l, r, AssignNode{
             to,
             expr
@@ -244,11 +244,11 @@ assign_stmt: StmtNode<String> = {
 
 #[inline]
 let_stmt: StmtNode<String> = {
-    <l:@L> "let" <m:"mut"?> <ident:identifier> <typ:(":" <type_>)?> <value:("=" <expr>)?> ";" <r:@R> => {
+    <l:@L> "let" <m:"mut"?> <ident:identifier> <typ:(":" <type_>)> <value:("=" <expr>)?> ";" <r:@R> => {
         StmtNode::Let(spanned2(l, r, LetNode{
             ident,
             mutable: m.is_some(),
-            typ,
+            typ: Some(typ),
             value
         }))
     },
@@ -435,9 +435,7 @@ question: Expr<String> = {
 
 factor = located<factor_node>;
 factor_node: ExprNode<String> = {
-    <l:@L> <f:factor> "(" <args:comma<expr>?> ")" <r:@R> => {
-        let func = box f;
-
+    <l:@L> <func:identifier> "(" <args:comma<expr>?> ")" <r:@R> => {
         ExprNode::Call(spanned2(l, r, CallNode{func, args: args.unwrap_or_else(Vec::new)}))
     },
     term => ExprNode::Term(<>),
@@ -446,8 +444,12 @@ factor_node: ExprNode<String> = {
 
 term = located<term_node>;
 term_node: TermNode<String> = {
-    identifier => TermNode::Var(<>),
+    named,
     located<literal> => TermNode::Lit(<>),
+};
+
+named: TermNode<String> = {
+    identifier => TermNode::Var(<>),
     <owner:factor> "." <field:identifier> => {
         let owner = box owner;
         TermNode::Field{owner, field}
@@ -460,14 +462,14 @@ term_node: TermNode<String> = {
 };
 
 literal: LitNode<String> = {
+    booll   => LitNode::Bool(<>),
     charl   => LitNode::Char(<>),
     intl    => LitNode::Integer(<>),
     fltl    => LitNode::Float(<>),
-    natl    => LitNode::Natural(<>),
     stringl => LitNode::String(<>),
     "[" <items:comma<(<expr> "=>" <expr>)>> "]" => LitNode::Map(<>),
-    "[" <items:comma<expr>?> "]" => {
-        LitNode::Vec(<>.unwrap_or_else(Vec::new))
+    "[" <items:comma<expr>> "]" => {
+        LitNode::Vec(<>)
     },
 };
 

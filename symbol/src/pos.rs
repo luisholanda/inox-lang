@@ -31,12 +31,7 @@ impl Location {
 
 impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "({}, {})",
-            self.line.number(),
-            self.column.number()
-        )
+        write!(f, "({}, {})", self.line.number(), self.column.number())
     }
 }
 
@@ -46,8 +41,8 @@ impl Into<BytePos> for Location {
     }
 }
 
-#[derive(Debug, Copy, Clone, Default, Eq, PartialEq)]
-pub struct Spanned<T, Pos: Copy> {
+#[derive(Debug, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Spanned<T, Pos> {
     pub span: Span<Pos>,
     pub value: T,
 }
@@ -90,7 +85,13 @@ impl<T, Pos: Copy> DerefMut for Spanned<T, Pos> {
 
 impl<T: fmt::Display, Pos: fmt::Display + Copy> fmt::Display for Spanned<T, Pos> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:10} ~ {:10} : {}", self.span.start(), self.span.end(), self.value)
+        write!(
+            f,
+            "{:10} ~ {:10} : {}",
+            self.span.start(),
+            self.span.end(),
+            self.value
+        )
     }
 }
 
